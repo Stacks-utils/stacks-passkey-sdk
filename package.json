@@ -1,0 +1,26 @@
+{
+  "name": "stacks-passkey",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "contracts",
+    "examples/*",
+    "tests/e2e"
+  ],
+  "scripts": {
+    "build": "npm run build -w @stacks-passkey/core && npm run build -w @stacks-passkey/react && npm run build -w @stacks-passkey/relay",
+    "test": "npm run test -w contracts && npm run test -w @stacks-passkey/core && npm run test -w @stacks-passkey/relay && npm run test:e2e -w stacks-passkey-e2e",
+    "test:contracts": "npm run test -w contracts",
+    "test:unit": "npm run test -w @stacks-passkey/core",
+    "test:e2e": "npm run test:e2e -w stacks-passkey-e2e",
+    "dev:relay": "npm run dev -w @stacks-passkey/relay",
+    "dev:demo": "npm run dev -w stacks-passkey-demo",
+    "dev:admin": "npm run dev -w stacks-passkey-relay-admin"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "vitest": "^3.0.5"
+  }
+}
