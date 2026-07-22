@@ -1,0 +1,30 @@
+{
+  "name": "@stacks-passkey/relay",
+  "version": "0.1.0",
+  "description": "Self-hostable sponsored transaction relay for Stacks Passkey SDK",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "stacks-passkey-relay": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stacks/network": "^7.0.2",
+    "@stacks/transactions": "^7.0.2",
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  },
+  "license": "MIT"
+}
