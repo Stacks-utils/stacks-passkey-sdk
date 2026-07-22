@@ -1,0 +1,5 @@
+# Local relay secrets — NEVER commit this file
+.env
+*.key
+*.pem
+data/
