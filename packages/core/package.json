@@ -1,0 +1,43 @@
+{
+  "name": "@stacks-passkey/core",
+  "version": "0.1.0",
+  "description": "Wallet-less passkey onboarding SDK for Stacks",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.8.1",
+    "@noble/hashes": "^1.7.1",
+    "@stacks/common": "^7.0.2",
+    "@stacks/network": "^7.0.2",
+    "@stacks/transactions": "^7.0.2",
+    "cbor-x": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
+  },
+  "keywords": [
+    "stacks",
+    "passkey",
+    "webauthn",
+    "clarity",
+    "secp256r1"
+  ],
+  "license": "MIT"
+}
