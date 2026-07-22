@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.cache/
+*.log
+.DS_Store
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+**/sponsor.key
+**/*.key
+**/*.pem
+contracts/settings/Testnet.toml
+contracts/settings/Mainnet.toml
