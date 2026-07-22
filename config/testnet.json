@@ -1,0 +1,39 @@
+{
+  "network": "testnet",
+  "deployer": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+  "contracts": {
+    "passkeyAccount": {
+      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+      "name": "passkey-account-v3",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account-v3",
+      "txid": "1d3009f5a2304d938f13531395c10cd0a638564da310f564a8f2e281db55e2ae"
+    },
+    "passkeyAccountV2": {
+      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+      "name": "passkey-account-v2",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account-v2",
+      "txid": "eaa03d5efee47f4cd74a8b88f00fdc680bd13ab15730c27d807b1dfc5056c8c6"
+    },
+    "passkeyAccountLegacy": {
+      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+      "name": "passkey-account",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account",
+      "txid": "e43acd84fec4537083adee80f11df8dbca3915ad2c9044ed600fac60969770ab"
+    },
+    "passkeyRecovery": {
+      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+      "name": "passkey-recovery",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-recovery",
+      "txid": "c57e0da949d1193c853a0af34eb53b9c7d1467231c2c9fa27d8f5d7a172371c4"
+    },
+    "webauthnVerifier": {
+      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+      "name": "webauthn-verifier",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.webauthn-verifier",
+      "txid": "38fc2dce59657dc67c9257df7eaebc0c8da9d596aa451c72317eb9d4d9155966"
+    }
+  },
+  "clarityVersion": 5,
+  "epoch": "3.4",
+  "deployedAt": "2026-07-22"
+}
