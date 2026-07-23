@@ -1,15 +1,76 @@
 import {
   Cl,
-  cvToHex,
   cvToValue,
   fetchCallReadOnlyFunction,
+  type ClarityValue,
 } from '@stacks/transactions';
 import type { StacksNetwork } from '@stacks/network';
 import { hexToBuffer } from './crypto.js';
-import type { PasskeyAction, TransferAction } from './types.js';
+import type { ContractCallArgs, InvokeAction, PasskeyAction, TransferAction } from './types.js';
+import { normalizeContractCallArgs } from './types.js';
+
+function clarityValueToBytes(parsed: unknown): Uint8Array {
+  if (parsed instanceof Uint8Array) return parsed;
+  if (typeof parsed === 'string') return hexToBuffer(parsed);
+  if (typeof parsed === 'object' && parsed !== null && 'value' in parsed) {
+    const wrapped = parsed as { value: unknown; success?: boolean };
+    if (wrapped.success === false) {
+      throw new Error(`Contract read-only call failed: ${JSON.stringify(wrapped.value)}`);
+    }
+    return clarityValueToBytes(wrapped.value);
+  }
+  throw new Error('Unexpected action hash from contract read-only call');
+}
+
+function clarityValueToBool(parsed: unknown): boolean {
+  if (parsed === true) return true;
+  if (parsed === false) return false;
+  if (typeof parsed === 'object' && parsed !== null && 'value' in parsed) {
+    const wrapped = parsed as { value: unknown; success?: boolean };
+    if (wrapped.success === false) return false;
+    return clarityValueToBool(wrapped.value);
+  }
+  return false;
+}
 
 function hashToBytes(result: Awaited<ReturnType<typeof fetchCallReadOnlyFunction>>): Uint8Array {
-  return hexToBuffer(cvToHex(result));
+  return clarityValueToBytes(cvToValue(result));
+}
+
+function parseContractId(contractId: string): { address: string; name: string } {
+  const dot = contractId.indexOf('.');
+  if (dot === -1) {
+    throw new Error('invoke contract must be address.contract-name');
+  }
+  return { address: contractId.slice(0, dot), name: contractId.slice(dot + 1) };
+}
+
+export function resolveInvokeAction(action: InvokeAction): {
+  contract: string;
+  function: string;
+  args?: ContractCallArgs;
+} {
+  const contract = action.contract ?? (action as { target?: string }).target;
+  const fn = action.function ?? (action as { functionName?: string }).functionName;
+  if (!contract || !fn) {
+    throw new Error('invoke action requires contract and function');
+  }
+  return { contract, function: fn, args: action.args };
+}
+
+export function buildInvokeArgs(args: ContractCallArgs = {}): ClarityValue[] {
+  return buildContractCallArgs(args);
+}
+
+export function buildContractCallArgs(args: ContractCallArgs = {}): ClarityValue[] {
+  const normalized = normalizeContractCallArgs(args);
+  return [
+    Cl.uint(normalized.arg0),
+    Cl.uint(normalized.arg1),
+    Cl.principal(normalized.arg2),
+    Cl.principal(normalized.arg3),
+    Cl.buffer(normalized.arg4),
+  ];
 }
 
 export async function fetchActionHash(
@@ -60,11 +121,33 @@ export async function fetchActionHash(
     return hashToBytes(result);
   }
 
+  if (action.type === 'remove-key') {
+    const result = await fetchCallReadOnlyFunction({
+      contractAddress,
+      contractName,
+      functionName: 'compute-remove-key-hash',
+      functionArgs: [Cl.buffer(action.targetPublicKey)],
+      network,
+      senderAddress,
+    });
+    return hashToBytes(result);
+  }
+
+  const { contract, function: functionName, args } = resolveInvokeAction(action);
+  const normalized = normalizeContractCallArgs(args);
   const result = await fetchCallReadOnlyFunction({
     contractAddress,
     contractName,
-    functionName: 'compute-remove-key-hash',
-    functionArgs: [Cl.buffer(action.targetPublicKey)],
+    functionName: 'compute-invoke-hash',
+    functionArgs: [
+      Cl.principal(contract),
+      Cl.stringAscii(functionName),
+      Cl.uint(normalized.arg0),
+      Cl.uint(normalized.arg1),
+      Cl.principal(normalized.arg2),
+      Cl.principal(normalized.arg3),
+      Cl.buffer(normalized.arg4),
+    ],
     network,
     senderAddress,
   });
@@ -112,8 +195,20 @@ export function buildExecuteFunctionArgs(
     ];
   }
 
+  if (action.type === 'remove-key') {
+    return [
+      Cl.buffer(action.targetPublicKey),
+      Cl.buffer(publicKey),
+      ...webAuthnArgs,
+    ];
+  }
+
+  const { contract, function: functionName, args } = resolveInvokeAction(action);
+  const { address, name } = parseContractId(contract);
   return [
-    Cl.buffer(action.targetPublicKey),
+    Cl.contractPrincipal(address, name),
+    Cl.stringAscii(functionName),
+    ...buildInvokeArgs(args),
     Cl.buffer(publicKey),
     ...webAuthnArgs,
   ];
@@ -130,6 +225,8 @@ export function getExecuteFunctionName(action: PasskeyAction): string {
       return 'add-key';
     case 'remove-key':
       return 'remove-key';
+    case 'invoke':
+      return 'execute-via-adapter';
   }
 }
 
@@ -156,11 +253,55 @@ export async function isPublicKeyAuthorized(
     network,
     senderAddress,
   });
-  const parsed = cvToValue(result) as { success?: boolean; value?: boolean } | boolean;
-  if (typeof parsed === 'object' && parsed !== null && 'success' in parsed) {
-    return parsed.success === true && parsed.value === true;
-  }
-  return parsed === true;
+  const parsed = cvToValue(result);
+  return clarityValueToBool(parsed);
 }
 
-export { ACTION_TRANSFER, ACTION_ADD_KEY, ACTION_REMOVE_KEY, ACTION_TRANSFER_WITH_FEE } from './types.js';
+export async function isContractRegistered(
+  network: StacksNetwork,
+  adapterAddress: string,
+  adapterName: string,
+  contractId: string,
+  senderAddress: string
+): Promise<boolean> {
+  try {
+    const result = await fetchCallReadOnlyFunction({
+      contractAddress: adapterAddress,
+      contractName: adapterName,
+      functionName: 'is-registered',
+      functionArgs: [Cl.principal(contractId)],
+      network,
+      senderAddress,
+    });
+    const parsed = cvToValue(result);
+    return clarityValueToBool(parsed);
+  } catch {
+    return false;
+  }
+}
+
+export function createInvokeAction(
+  contract: string,
+  fn: string,
+  args?: ContractCallArgs
+): InvokeAction {
+  return { type: 'invoke', contract, function: fn, args };
+}
+
+/** @deprecated Use createInvokeAction */
+export function createContractCallAction(
+  target: string,
+  functionName: string,
+  args?: ContractCallArgs
+): InvokeAction {
+  return createInvokeAction(target, functionName, args);
+}
+
+export {
+  ACTION_TRANSFER,
+  ACTION_ADD_KEY,
+  ACTION_REMOVE_KEY,
+  ACTION_TRANSFER_WITH_FEE,
+  ACTION_INVOKE,
+  ACTION_CONTRACT_CALL,
+} from './types.js';
