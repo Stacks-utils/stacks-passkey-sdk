@@ -1,5 +1,5 @@
 id: 0
-name: Testnet deployment
+name: Core testnet deployment
 network: testnet
 stacks-node: https://api.testnet.hiro.so
 bitcoin-node: http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332
@@ -8,24 +8,17 @@ plan:
   - id: 0
     transactions:
     - transaction-type: contract-publish
-      contract-name: passkey-account
+      contract-name: passkey-adapter
       expected-sender: ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ
-      cost: 82760
-      path: contracts/passkey-account.clar
+      cost: 45000
+      path: contracts/passkey-adapter.clar
       anchor-block-only: true
       clarity-version: 5
     - transaction-type: contract-publish
-      contract-name: passkey-recovery
+      contract-name: passkey-factory
       expected-sender: ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ
-      cost: 34770
-      path: contracts/passkey-recovery.clar
-      anchor-block-only: true
-      clarity-version: 5
-    - transaction-type: contract-publish
-      contract-name: webauthn-verifier
-      expected-sender: ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ
-      cost: 22990
-      path: contracts/webauthn-verifier.clar
+      cost: 35000
+      path: contracts/passkey-factory.clar
       anchor-block-only: true
       clarity-version: 5
     epoch: '3.4'

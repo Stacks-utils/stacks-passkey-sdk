@@ -65,24 +65,39 @@ plan:
   - id: 0
     transactions:
     - transaction-type: emulated-contract-publish
+      contract-name: passkey-adapter
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/passkey-adapter.clar
+      clarity-version: 5
+    - transaction-type: emulated-contract-publish
+      contract-name: mock-passkey-app
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: tests/fixtures/mock-passkey-app.clar
+      clarity-version: 5
+    - transaction-type: emulated-contract-publish
+      contract-name: passkey-acc-user1
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/passkey-account.clar
+      clarity-version: 5
+    - transaction-type: emulated-contract-publish
       contract-name: passkey-account
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/passkey-account.clar
       clarity-version: 5
     - transaction-type: emulated-contract-publish
-      contract-name: passkey-account-v2
+      contract-name: passkey-factory
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-      path: contracts/passkey-account.clar
-      clarity-version: 5
-    - transaction-type: emulated-contract-publish
-      contract-name: passkey-account-v3
-      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-      path: contracts/passkey-account.clar
+      path: contracts/passkey-factory.clar
       clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: passkey-recovery
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/passkey-recovery.clar
+      clarity-version: 5
+    - transaction-type: emulated-contract-publish
+      contract-name: smart-account
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/passkey-account.clar
       clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: webauthn-verifier
