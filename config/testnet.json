@@ -1,24 +1,27 @@
 {
   "network": "testnet",
   "deployer": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
+  "defaultPasskeyAccount": null,
+  "note": "Per-user smart accounts are self-deployed by users at STorigin.smart-account. passkey-factory registers pubkey mappings.",
   "contracts": {
-    "passkeyAccount": {
+    "passkeyFactory": {
       "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
-      "name": "passkey-account-v3",
-      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account-v3",
-      "txid": "1d3009f5a2304d938f13531395c10cd0a638564da310f564a8f2e281db55e2ae"
+      "name": "passkey-factory",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-factory",
+      "txid": "4504bc3bce831707f9ed44473e6164198a40e6e2cd11c34567c6b461e44035b1"
     },
-    "passkeyAccountV2": {
+    "passkeyAdapter": {
       "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
-      "name": "passkey-account-v2",
-      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account-v2",
-      "txid": "eaa03d5efee47f4cd74a8b88f00fdc680bd13ab15730c27d807b1dfc5056c8c6"
+      "name": "passkey-adapter",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-adapter",
+      "txid": "462386edd1f1d5239dfc4df24c72db1b93efc6106219d0596620917d5d677dd0"
     },
-    "passkeyAccountLegacy": {
+    "passkeyDemoApp": {
       "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
-      "name": "passkey-account",
-      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account",
-      "txid": "e43acd84fec4537083adee80f11df8dbca3915ad2c9044ed600fac60969770ab"
+      "name": "passkey-demo-app",
+      "id": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-demo-app",
+      "txid": "f9e40900ac8a75884e162dca4d438ec15ee385a88643207d101936ff21a5e95a",
+      "location": "examples/demo/contracts/passkey-demo-app.clar"
     },
     "passkeyRecovery": {
       "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
@@ -34,6 +37,5 @@
     }
   },
   "clarityVersion": 5,
-  "epoch": "3.4",
-  "deployedAt": "2026-07-22"
+  "epoch": "3.4"
 }
