@@ -1,5 +1,7 @@
-# Local relay secrets — NEVER commit this file
+# Local relay secrets — see repo root .gitignore
 .env
+.env.*
+!.env.example
 *.key
 *.pem
 data/
