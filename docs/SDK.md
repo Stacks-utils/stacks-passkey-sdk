@@ -4,6 +4,11 @@ Complete documentation for integrating wallet-less passkey smart accounts into y
 
 **Packages:** `@stacks-passkey/core` · `@stacks-passkey/react` · `@stacks-passkey/relay`
 
+> **New to this SDK?**
+> - **Frontend only** (no relay/contracts to host): **[GUIDE.md](./GUIDE.md)**
+> - **Full stack** (deploy + relay): **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)**
+> - This file is the **API reference**.
+
 ---
 
 ## Table of contents
@@ -52,7 +57,8 @@ Your app talks to three pieces:
 |-------|------|
 | **`@stacks-passkey/core`** | WebAuthn, session, tx building, relay client |
 | **`@stacks-passkey/relay`** | Self-hosted server that pays network fees |
-| **`passkey-account.clar`** | On-chain smart account holding STX and authorized keys |
+| **`passkey-account.clar`** | On-chain smart account — transfers, key management, `execute-via-adapter` |
+| **`passkey-adapter.clar`** | Universal registry — forwards to app contracts implementing `passkey-exec-trait` |
 
 Passkey private keys **never leave the device**. The relay cannot forge signatures — it only sponsors gas.
 
@@ -69,7 +75,6 @@ Passkey private keys **never leave the device**. The relay cannot forge signatur
 **Not a fit (yet):**
 
 - Server-side / CLI-only apps (WebAuthn requires a browser)
-- Apps that need arbitrary contract calls from every user (SDK supports defined actions: transfer, add-key, remove-key)
 - Mainnet before Clarity 5 / Epoch 3.4 is live on your target network
 
 ---
@@ -127,14 +132,16 @@ Contract verifies secp256r1 signature ──► executes transfer
 ## Quick integration checklist
 
 ```
-□ Deploy passkey-account.clar (+ webauthn-verifier.clar dependency)
+□ Deploy passkey-adapter.clar + passkey-account.clar
+□ Implement passkey-exec on your app contract (see passkey-demo-app.clar)
 □ Fund relay sponsor wallet with STX
-□ Start relay with ALLOWED_CONTRACTS set to your deployer address
+□ Start relay with PASSKEY_ADAPTER_ADDRESS + ALLOWED_CONTRACTS
 □ Create project API key (spk_...) via admin dashboard
 □ npm install @stacks-passkey/core @stacks/network
 □ Configure PasskeyClient with contract address, rpId, relay URL, API key
 □ Implement register() + signIn() UI
-□ Implement executeAction() for transfers / key management
+□ Use client.invoke() or executeAction({ type: 'invoke', ... })
+□ spk ensure STxxx.my-app (or let invoke() auto-ensure via relay)
 □ Fund smart account contract if using transfers or account-pay
 □ Serve app over HTTPS in production
 □ Proxy relay API key through backend (production)
@@ -144,37 +151,29 @@ Contract verifies secp256r1 signature ──► executes transfer
 
 ## Step 1 — Deploy contracts
 
-The SDK expects a deployed instance of `passkey-account.clar`. This repo includes contracts and Clarinet tests.
+The SDK expects **`passkey-account.clar`** and **`passkey-adapter.clar`**. App contracts implement `passkey-exec-trait` from the adapter. This repo includes contracts and Clarinet tests.
 
 ```bash
 cd contracts
-clarinet check
-clarinet test
-clarinet deployments generate --testnet
-clarinet deployments apply -p testnet
+clarinet check -d
+npm run test
+
+# Deploy adapter + account + demo app to testnet
+clarinet deployments apply -p deployments/default.testnet-plan.yaml
 ```
 
-After deployment, note your:
+After deployment, note:
 
-- **Contract address** — e.g. `ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ`
-- **Contract name** — use `passkey-account-v3` (supports counterless platform passkeys)
+- **Account** — `STxxx.passkey-account`
+- **Adapter** — `STxxx.passkey-adapter` (set `PASSKEY_ADAPTER_ADDRESS` on relay)
 
-This repo's testnet deployment is recorded in `config/testnet.json`:
+Shared testnet IDs are in `config/testnet.json`.
 
-```json
-{
-  "contracts": {
-    "passkeyAccount": {
-      "address": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ",
-      "name": "passkey-account-v3"
-    }
-  }
-}
-```
+### App contract setup
 
-You can point your app at this shared testnet deployment for prototyping, or deploy your own for production.
-
-**Important:** Use **v3** for production. Earlier versions (`passkey-account`, `passkey-account-v2`) have stricter sign-count replay checks that break some platform passkeys.
+1. Implement `passkey-exec-trait` from `passkey-adapter` (see `passkey-demo-app.clar`).
+2. Register via relay: `spk ensure STxxx.my-app` or `client.invoke()` (auto-ensure).
+3. Users call through `execute-via-adapter` on the shared passkey account.
 
 ---
 
@@ -279,9 +278,9 @@ export const passkeyClient = new PasskeyClient({
   // Stacks network
   network: STACKS_TESTNET,
 
-  // Your deployed passkey-account contract
-  contractAddress: 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ',
-  contractName: 'passkey-account-v3',
+  // Factory mode (default) — relay deploys per-user passkey-acc-* on sign-up
+  deployerAddress: 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ',
+  factoryName: 'passkey-factory',
 
   // WebAuthn relying party — MUST match your domain in production
   rpId: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
@@ -306,8 +305,11 @@ export const passkeyClient = new PasskeyClient({
 | Field | Required | Description |
 |-------|----------|-------------|
 | `network` | Yes | `STACKS_TESTNET` or `STACKS_MAINNET` from `@stacks/network` |
-| `contractAddress` | Yes | Deployer address of your passkey-account contract |
-| `contractName` | Yes | Contract name (e.g. `passkey-account-v3`) |
+| `deployerAddress` | Yes* | Deployer for factory, adapter, and per-user accounts |
+| `factoryName` | No | Factory contract name (default `passkey-factory`) |
+| `useFactory` | No | Default `true`; legacy shared account when `false` + `contractName` |
+| `contractAddress` | Legacy | Shared account address when `useFactory: false` |
+| `contractName` | Legacy | Shared account name when `useFactory: false` |
 | `rpId` | Yes | WebAuthn relying party ID — your domain without protocol/port |
 | `rpName` | Yes | Human-readable name shown in passkey prompts |
 | `origin` | Yes | Full origin URL (`https://app.example.com`) |
@@ -430,7 +432,7 @@ await transferStx(session, 'ST1PHCPAAFW8ZFB9MNR87K97K5QXR3K1JSC01CY7Z', 1_000_00
 **Before transferring:** Fund the smart account contract:
 
 ```
-ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account-v3
+ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-account
 ```
 
 Send testnet STX to this contract principal. The contract holds STX collectively; each registered passkey can authorize transfers.
@@ -458,6 +460,77 @@ await passkeyClient.executeAction(
   session.credentialId
 );
 ```
+
+### Factory smart accounts (default)
+
+In factory mode (default when `deployerAddress` is set without `useFactory: false`), `register()` calls relay **`POST /v1/accounts/ensure`** with the user's pubkey. The relay:
+
+1. Derives contract name `passkey-acc-{sha256(pubkey)[0:8]}`
+2. Deploys `passkey-account.clar` if not present
+3. Calls `register(pubkey)` on the instance
+4. Calls `register-account(pubkey, account)` on `passkey-factory`
+
+The session stores the user's **`contractId`** (e.g. `STxxx.passkey-acc-a1b2c3d4`). Fund that address for transfers.
+
+```typescript
+await client.register(crypto.randomUUID(), 'Alice');
+console.log(client.getAccountContractId()); // STxxx.passkey-acc-...
+```
+
+Legacy shared-account mode: set `useFactory: false` and provide `contractAddress` + `contractName`.
+
+### Invoke app contracts (adapter + catalog)
+
+Use **`client.invoke()`** to call your app's contract functions. The relay catalog auto-registers contracts that implement `passkey-exec` on-chain via `passkey-adapter`.
+
+**On your app contract**, implement the trait from the adapter:
+
+```clarity
+(impl-trait .passkey-adapter.passkey-exec-trait)
+
+(define-public (passkey-exec
+    (function-name (string-ascii 128))
+    (arg0 uint) (arg1 uint) (arg2 principal) (arg3 principal) (arg4 (buff 1024))
+  )
+  (asserts! (is-eq function-name "set-score") (err u9001))
+  ;; dispatch to internal logic using arg0, arg2, ...
+  (ok u1)
+)
+```
+
+**CLI / relay registration:**
+
+```bash
+export SPK_RELAY_URL=http://localhost:8787
+export SPK_RELAY_API_KEY=spk_...
+spk ensure STxxx.my-app
+```
+
+**SDK usage:**
+
+```typescript
+// invoke() calls relay ensure, then execute-via-adapter on passkey-account
+const txid = await passkeyClient.invoke('STxxx.my-app', 'set-score', {
+  arg0: 100n,
+  arg2: userPrincipal,
+});
+
+// Or lower-level:
+import { createInvokeAction } from '@stacks-passkey/core';
+
+const action = createInvokeAction('STxxx.my-app', 'set-score', { arg0: 100n, arg2: userPrincipal });
+await passkeyClient.executeAction(action, hexToBytes(session.publicKeyHex), session.credentialId);
+```
+
+| Arg slot | Type | Typical use |
+|----------|------|-------------|
+| `arg0`, `arg1` | `uint` | amounts, ids, flags |
+| `arg2`, `arg3` | `principal` | recipients, accounts |
+| `arg4` | `(buff 1024)` | serialized payload |
+
+**Flow:** `passkey-account.execute-via-adapter` → `passkey-adapter.forward-invoke` → `your-app.passkey-exec`.
+
+See `examples/demo/contracts/passkey-demo-app.clar` for a working example.
 
 ### Poll transaction status
 
@@ -782,7 +855,16 @@ interface PasskeyCredential {
 type PasskeyAction =
   | { type: 'transfer'; recipient: string; amount: bigint; feeRecipient?: string; feeAmount?: bigint }
   | { type: 'add-key'; newPublicKey: Uint8Array }
-  | { type: 'remove-key'; targetPublicKey: Uint8Array };
+  | { type: 'remove-key'; targetPublicKey: Uint8Array }
+  | { type: 'contract-call'; target: string; functionName: string; args?: ContractCallArgs };
+
+interface ContractCallArgs {
+  arg0?: bigint;
+  arg1?: bigint;
+  arg2?: string;  // principal
+  arg3?: string;  // principal
+  arg4?: Uint8Array;
+}
 
 interface SponsorResponse {
   txid: string;
@@ -832,6 +914,11 @@ interface SponsorResponse {
 | `findStoredCredentials` / `saveStoredCredential` | Credential index |
 | `fetchActionHash` | Get on-chain hash for signing |
 | `isPublicKeyAuthorized` | Check key registration |
+| `invoke` | Call app contract via adapter (auto catalog ensure) |
+| `isContractRegistered` | Check adapter registry (read-only) |
+| `createInvokeAction` | Build an `invoke` action |
+| `buildContractCallArgs` | Serialize arg slots for invoke |
+| `CONTRACT_CALL_UNUSED_PRINCIPAL` | Sentinel principal for unused arg slots |
 | `broadcastContractCall` | Low-level sponsored broadcast |
 | `normalizeTxId` | Strip `0x` prefix for Hiro API |
 | `createTestPasskey` | Software passkey for tests |
@@ -866,7 +953,7 @@ npm run dev:relay
 
 # Terminal 2 — demo app
 cp examples/demo/.env.example examples/demo/.env
-# Edit VITE_RELAY_API_KEY
+# Set VITE_RELAY_API_KEY and VITE_CONTRACT_NAME=passkey-account
 npm run dev:demo
 
 # Terminal 3 — admin (optional)
@@ -886,16 +973,17 @@ npm run test:e2e          # integration
 
 ## Production deployment
 
-1. **Deploy contracts** to mainnet (Clarity 5+ confirmed on network).
-2. **Deploy relay** behind TLS reverse proxy (nginx, Cloudflare, etc.).
-3. **Use `SPONSOR_PRIVATE_KEY_FILE`** with restrictive permissions — never inline keys.
-4. **Set `ALLOWED_CONTRACTS`** to your deployer address only.
-5. **Create per-environment API keys** (staging vs production).
-6. **Proxy `/sponsor`** through your backend — do not expose `spk_...` in frontend.
-7. **Set `rpId`** to your production domain.
-8. **Serve app over HTTPS.**
-9. **Monitor gas tank** balance; set up alerts before it runs dry.
-10. **Fund sponsor wallet** with minimal STX needed for burst traffic.
+1. **Deploy contracts** to mainnet (Clarity 5+ confirmed on network): `passkey-adapter`, `passkey-account`, your app with `passkey-exec`.
+2. **Allowlist app contracts** on v4 via `set-contract-allowed`.
+3. **Deploy relay** behind TLS reverse proxy (nginx, Cloudflare, etc.).
+4. **Use `SPONSOR_PRIVATE_KEY_FILE`** with restrictive permissions — never inline keys.
+5. **Set `ALLOWED_CONTRACTS`** to your deployer address only.
+6. **Create per-environment API keys** (staging vs production).
+7. **Proxy `/sponsor`** through your backend — do not expose `spk_...` in frontend.
+8. **Set `rpId`** to your production domain.
+9. **Serve app over HTTPS.**
+10. **Monitor gas tank** balance; set up alerts before it runs dry.
+11. **Fund sponsor wallet** with minimal STX needed for burst traffic.
 
 ---
 
@@ -907,7 +995,7 @@ npm run test:e2e          # integration
 | Relay sponsor key | Hot wallet — minimal funds, rotate if exposed |
 | API keys (`spk_...`) | Secrets — backend proxy in production |
 | Admin key | Protect `RELAY_ADMIN_API_KEY`; admin UI requires wallet gate |
-| Contract allowlist | Restrict relay to your contracts |
+| Contract allowlist | Restrict relay to your deployer address (`ALLOWED_CONTRACTS`). v4 also allowlists call targets on-chain via `set-contract-allowed`. |
 | WebAuthn rpId | Must match production domain |
 | Origin key | Local to browser — clearing site data requires re-registration flow |
 
@@ -917,8 +1005,9 @@ npm run test:e2e          # integration
 
 | Symptom | Solution |
 |---------|----------|
-| `(err u1001)` unauthorized | Wrong WebAuthn payload or action hash mismatch. Use SDK latest + contract v3. |
-| `(err u1007)` replay | Platform passkey sign count 0. Deploy `passkey-account-v3`. |
+| `(err u1001)` unauthorized | Wrong WebAuthn payload or action hash mismatch. Use SDK latest + contract v3/v4. |
+| `(err u1007)` replay | Platform passkey sign count 0. Use `passkey-account-v3` or v4 (both support counterless keys). |
+| `(err u1010)` contract not allowed | Target not allowlisted on v4. Call `set-contract-allowed` as admin. |
 | `BadNonce` | Transient — SDK retries. Don't clear localStorage mid-session. |
 | `Contract not allowlisted` | Add deployer to relay `ALLOWED_CONTRACTS`. |
 | `Insufficient gas tank balance` | Refill via admin dashboard. |
@@ -933,10 +1022,10 @@ npm run test:e2e          # integration
 ## FAQ
 
 **Q: Do users get their own contract address?**
-A: No. All users share one `passkey-account` contract instance. Each user registers a unique public key on that contract. The contract holds STX in a shared balance.
+A: No. All users share one passkey-account contract instance. Each user registers a unique public key on that contract. The contract holds STX in a shared balance.
 
 **Q: Can users call any Clarity contract?**
-A: Not directly through the SDK today. Supported actions are `transfer-stx`, `add-key`, and `remove-key`. Extend the contract for custom actions.
+A: Yes — if your contract implements `passkey-exec` and is registered on `passkey-adapter` via the relay catalog. Use `client.invoke()` from the SDK.
 
 **Q: Does this replace Leather / Xverse?**
 A: No. It's an alternative onboarding path for apps that want passkey UX. Users don't need an extension.
