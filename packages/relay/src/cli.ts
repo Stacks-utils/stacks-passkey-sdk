@@ -4,6 +4,7 @@ import { createRelayApp } from './app.js';
 import { loadRelayEnv } from './load-env.js';
 import { assertRelayAuthConfigured, loadSponsorPrivateKey } from './secrets.js';
 import { GasTankStore, defaultStorePath } from './gas-tank.js';
+import { loadMasterSecret, loadSessionSecret } from './crypto.js';
 import type { RelayConfig } from './types.js';
 
 loadRelayEnv();
@@ -14,6 +15,9 @@ function loadConfig(): RelayConfig {
 
   return {
     sponsorPrivateKey: loadSponsorPrivateKey(),
+    registrarPrivateKey: process.env.REGISTRAR_PRIVATE_KEY,
+    masterSecret: loadMasterSecret(),
+    sessionSecret: loadSessionSecret(),
     network,
     port: Number(process.env.PORT ?? 8787),
     host: process.env.HOST ?? '127.0.0.1',
@@ -32,16 +36,13 @@ function loadConfig(): RelayConfig {
 }
 
 const config = loadConfig();
-const gasTank = new GasTankStore(config.gasTankPath!);
-
-if (gasTank.listProjects().length === 0 && process.env.BOOTSTRAP_DEMO_PROJECT === 'true') {
-  const demo = gasTank.createProject('Demo App', 5_000_000n);
-  console.log(`Bootstrapped demo project API key: ${demo.apiKey}`);
-}
+const sponsorNetwork = config.network === 'mainnet' ? 'mainnet' : 'testnet';
+const gasTank = new GasTankStore(config.gasTankPath!, config.masterSecret, sponsorNetwork);
 
 const app = createRelayApp(config, gasTank);
 
 serve({ fetch: app.fetch, port: config.port, hostname: config.host }, () => {
   console.log(`Stacks Passkey relay listening on http://${config.host}:${config.port}`);
-  console.log(`Gas tank store: ${config.gasTankPath}`);
+  console.log(`Relay store: ${config.gasTankPath}`);
+  console.log(`Registrar: ${config.network} (platform key — per-wallet sponsors derived from RELAY_MASTER_SECRET)`);
 });
