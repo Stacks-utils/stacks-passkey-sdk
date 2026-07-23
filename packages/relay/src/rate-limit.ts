@@ -32,5 +32,9 @@ export class RateLimiter {
 
 export function isContractAllowed(contractId: string, policy: RelayPolicy): boolean {
   if (!policy.allowedContracts || policy.allowedContracts.length === 0) return true;
+
+  const smartAccountName = process.env.PASSKEY_SMART_ACCOUNT_NAME ?? 'smart-account';
+  if (contractId.endsWith(`.${smartAccountName}`)) return true;
+
   return policy.allowedContracts.some((allowed) => contractId.startsWith(allowed));
 }
