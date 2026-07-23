@@ -30,7 +30,7 @@ npm run dev:relay
 |----------|----------|-------|
 | `SPONSOR_PRIVATE_KEY_FILE` | Yes (prod) | Path to chmod 600 key file |
 | `RELAY_API_KEY` | Yes (prod) | Bearer token for `/sponsor` |
-| `ALLOWED_CONTRACTS` | Recommended | Restrict which contracts can be called |
+| `ALLOWED_CONTRACTS` | Recommended | Comma-separated deployer addresses whose contracts the relay may sponsor (e.g. your `passkey-account` deployer) |
 | `MAX_FEE_MICRO_STX` | Recommended | Cap fee per sponsored tx |
 | `HOST` | Recommended | Default `127.0.0.1` |
 | `SPONSOR_PRIVATE_KEY` | Dev only | Blocked when `NODE_ENV=production` |
