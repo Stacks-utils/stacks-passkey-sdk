@@ -1,12 +1,16 @@
 import testnet from '../../../config/testnet.json';
 
+const deployer = testnet.deployer;
+
 export const testnetConfig = {
   network: 'testnet' as const,
-  deployer: testnet.deployer,
+  deployer,
   relayUrl: import.meta.env.VITE_RELAY_URL ?? 'http://localhost:8787',
-  contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS ?? testnet.contracts.passkeyAccount.address,
-  contractName: import.meta.env.VITE_CONTRACT_NAME ?? testnet.contracts.passkeyAccount.name,
-  passkeyAccountId: testnet.contracts.passkeyAccount.id,
+  deployerAddress: import.meta.env.VITE_DEPLOYER_ADDRESS ?? deployer,
+  factoryName: import.meta.env.VITE_FACTORY_NAME ?? testnet.contracts.passkeyFactory.name,
+  passkeyAdapterId: testnet.contracts.passkeyAdapter.id,
+  passkeyDemoAppId: testnet.contracts.passkeyDemoApp.id,
+  passkeyFactoryId: testnet.contracts.passkeyFactory.id,
   webauthnVerifierId: testnet.contracts.webauthnVerifier.id,
   passkeyRecoveryId: testnet.contracts.passkeyRecovery.id,
 };
