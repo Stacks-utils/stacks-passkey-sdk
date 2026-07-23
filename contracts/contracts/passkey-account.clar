@@ -1,6 +1,5 @@
-;; Passkey-controlled smart account for Stacks
-;; Stores P-256 public keys and gates actions behind on-chain WebAuthn verification.
-;; Supports multiple registered passkeys (multi-user) and optional fee reimbursement.
+;; Passkey-controlled smart account for Stacks.
+;; Built-in transfers + key management + invoke via universal passkey-adapter.
 
 (define-constant err-unauthorized (err u1001))
 (define-constant err-already-registered (err u1002))
@@ -17,6 +16,9 @@
 (define-constant ACTION-ADD-KEY u2)
 (define-constant ACTION-REMOVE-KEY u3)
 (define-constant ACTION-TRANSFER-WITH-FEE u4)
+(define-constant ACTION-INVOKE u5)
+
+(use-trait exec-trait .passkey-adapter.passkey-exec-trait)
 
 (define-map authorized-keys (buff 33) { sign-count: uint, added-at: uint })
 (define-data-var key-count uint u0)
@@ -98,7 +100,6 @@
   )
 )
 
-;; Transfer STX and reimburse a fee recipient (relayer) from contract balance - account-pay mode.
 (define-public (transfer-stx-with-fee
     (recipient principal)
     (amount uint)
@@ -123,6 +124,35 @@
     (var-set nonce (+ (var-get nonce) u1))
     (print { event: "transfer-with-fee", recipient: recipient, amount: amount, fee-recipient: fee-recipient, fee-amount: fee-amount })
     (ok true)
+  )
+)
+
+;; Invoke registered app contract via universal adapter (passkey-invoke-trait).
+(define-public (execute-via-adapter
+    (target <exec-trait>)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+    (pubkey (buff 33))
+    (signature (buff 64))
+    (authenticator-data (buff 512))
+    (client-data-json (buff 1024))
+  )
+  (let (
+      (target-principal (contract-of target))
+      (action-hash (hash-invoke target-principal function-name arg0 arg1 arg2 arg3 arg4))
+      (key-info (unwrap! (map-get? authorized-keys pubkey) err-key-not-found))
+    )
+    (begin
+      (try! (verify-and-update pubkey signature authenticator-data client-data-json action-hash key-info))
+      (try! (contract-call? .passkey-adapter forward-invoke target function-name arg0 arg1 arg2 arg3 arg4))
+      (var-set nonce (+ (var-get nonce) u1))
+      (print { event: "invoke", target: target-principal, function-name: function-name })
+      (ok true)
+    )
   )
 )
 
@@ -152,6 +182,18 @@
 
 (define-read-only (compute-remove-key-hash (target-pubkey (buff 33)))
   (ok (compute-action-hash ACTION-REMOVE-KEY (some target-pubkey) none none none none))
+)
+
+(define-read-only (compute-invoke-hash
+    (target principal)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+  )
+  (ok (hash-invoke target function-name arg0 arg1 arg2 arg3 arg4))
 )
 
 (define-read-only (verify-action-signature
@@ -209,8 +251,6 @@
   )
 )
 
-;; Platform passkeys (e.g. Apple) may report sign-count 0 when counters are disabled.
-;; In that case rely on the account nonce embedded in the action hash for replay protection.
 (define-private (valid-sign-count (stored uint) (new uint))
   (if (is-eq new u0)
     true
@@ -242,5 +282,28 @@
     amount: amount-opt,
     fee-recipient: fee-recipient-opt,
     fee-amount: fee-amount-opt,
+  })))
+)
+
+(define-private (hash-invoke
+    (target principal)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+  )
+  (sha256 (unwrap-panic (to-consensus-buff? {
+    version: u4,
+    nonce: (var-get nonce),
+    action-type: ACTION-INVOKE,
+    target: target,
+    function-name: function-name,
+    arg0: arg0,
+    arg1: arg1,
+    arg2: arg2,
+    arg3: arg3,
+    arg4: arg4,
   })))
 )
