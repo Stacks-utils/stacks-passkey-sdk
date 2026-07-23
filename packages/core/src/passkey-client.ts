@@ -1,4 +1,4 @@
-import { Cl, getAddressFromPrivateKey, randomPrivateKey, type ClarityValue } from '@stacks/transactions';
+import { Cl, getAddressFromPrivateKey, ClarityVersion, type ClarityValue } from '@stacks/transactions';
 import { RelayClient } from './relay-client.js';
 import {
   buildExecuteFunctionArgs,
@@ -9,11 +9,22 @@ import {
 } from './actions.js';
 import { bufferToHex, hexToBuffer, base64UrlDecode } from './crypto.js';
 import { normalizeTxId } from './broadcast.js';
-import { loadOriginPrivateKey, originKeyScope, saveOriginPrivateKey } from './origin-key.js';
+import {
+  loadOriginPrivateKey,
+  originKeyScope,
+  saveOriginPrivateKey,
+} from './origin-key.js';
 import {
   broadcastContractCall,
   type FeeOptions,
 } from './fee.js';
+import { broadcastContractDeploy, isContractDeployed } from './deploy.js';
+import {
+  DEFAULT_SMART_ACCOUNT_NAME,
+  deriveOriginPrivateKey,
+  originKeyScopeForAddress,
+  smartAccountContractId,
+} from './derive-origin.js';
 import { saveSession, loadSession, clearSession } from './session.js';
 import {
   findStoredCredentialById,
@@ -28,8 +39,10 @@ import type {
   PasskeyConfig,
   PasskeyCredential,
   PasskeySession,
-  TransferAction,
+  ContractCallArgs,
 } from './types.js';
+import { createInvokeAction } from './actions.js';
+import { resolveDeployerAddress } from './types.js';
 
 export interface PasskeyClientOptions extends PasskeyConfig {
   relayApiKey?: string;
@@ -42,12 +55,15 @@ export class PasskeyClient {
   readonly config: PasskeyConfig;
   private readonly relay: RelayClient;
   private fee: FeeConfig;
-  private readonly originScope: string;
-  private originPrivateKey: string;
+  private readonly deployerAddress: string;
   private feeRecipient?: string;
 
   constructor(options: PasskeyClientOptions) {
     this.config = options;
+    this.deployerAddress = resolveDeployerAddress(options);
+    if (!this.deployerAddress) {
+      throw new Error('PasskeyConfig requires deployerAddress');
+    }
     this.fee = options.fee ?? {
       mode: 'gasless',
       relayUrl: options.relayUrl,
@@ -57,14 +73,6 @@ export class PasskeyClient {
       relayUrl: this.fee.relayUrl ?? options.relayUrl,
       apiKey: this.fee.relayApiKey ?? options.relayApiKey,
     });
-    this.originScope = originKeyScope(
-      options.contractAddress,
-      options.contractName,
-      String(options.network.chainId)
-    );
-    this.originPrivateKey =
-      options.originPrivateKey ?? loadOriginPrivateKey(this.originScope) ?? randomPrivateKey();
-    saveOriginPrivateKey(this.originScope, this.originPrivateKey);
   }
 
   setFeeConfig(fee: FeeConfig): void {
@@ -75,8 +83,28 @@ export class PasskeyClient {
     return this.fee.mode;
   }
 
+  getDeployerAddress(): string {
+    return this.deployerAddress;
+  }
+
+  /** User smart account contract id, e.g. STxxx.smart-account */
+  getAccountContractId(): string | null {
+    const account = this.tryGetUserContract();
+    return account ? `${account.address}.${account.name}` : null;
+  }
+
   getOriginAddress(): string {
-    return getAddressFromPrivateKey(this.originPrivateKey, this.getNetworkName());
+    const session = loadSession();
+    if (session?.originAddress) return session.originAddress;
+    try {
+      return getAddressFromPrivateKey(this.getOriginPrivateKey(), this.getNetworkName());
+    } catch {
+      return '';
+    }
+  }
+
+  getSmartAccountName(): string {
+    return this.config.smartAccountName ?? DEFAULT_SMART_ACCOUNT_NAME;
   }
 
   private getNetworkName(): 'mainnet' | 'testnet' {
@@ -85,6 +113,71 @@ export class PasskeyClient {
 
   getRelayClient(): RelayClient {
     return this.relay;
+  }
+
+  private credentialFilter() {
+    return { deployerAddress: this.deployerAddress, rpId: this.config.rpId };
+  }
+
+  private tryGetUserContract(): { address: string; name: string } | null {
+    const session = loadSession();
+    if (session?.contractAddress && session?.contractName) {
+      return { address: session.contractAddress, name: session.contractName };
+    }
+    return null;
+  }
+
+  private getUserContract(): { address: string; name: string } {
+    const account = this.tryGetUserContract();
+    if (!account) {
+      throw new Error('No passkey smart account — register or sign in first');
+    }
+    return account;
+  }
+
+  private getOriginPrivateKey(publicKeyHex?: string): string {
+    const session = loadSession();
+    const network = String(this.config.network.chainId);
+    if (session?.originAddress) {
+      const scope = originKeyScopeForAddress(session.originAddress, network);
+      const existing = loadOriginPrivateKey(scope);
+      if (existing) return existing;
+    }
+
+    if (publicKeyHex) {
+      const derived = deriveOriginPrivateKey(publicKeyHex, this.config.rpId, this.config.network.chainId);
+      const originAddress = getAddressFromPrivateKey(derived, this.getNetworkName());
+      saveOriginPrivateKey(originKeyScopeForAddress(originAddress, network), derived);
+      return derived;
+    }
+
+    const account = this.tryGetUserContract();
+    const scope = account
+      ? originKeyScope(account.address, account.name, network)
+      : `pending:${this.deployerAddress}:${network}`;
+    const existing = loadOriginPrivateKey(scope);
+    if (existing) return existing;
+    throw new Error('Origin key unavailable — register or sign in first');
+  }
+
+  private buildSession(
+    credentialId: string,
+    publicKeyHex: string,
+    contractAddress: string,
+    contractName: string,
+    originAddress?: string
+  ): PasskeySession {
+    return {
+      credentialId,
+      publicKeyHex,
+      contractAddress,
+      contractName,
+      contractId: `${contractAddress}.${contractName}`,
+      deployerAddress: this.deployerAddress,
+      rpId: this.config.rpId,
+      feeMode: this.fee.mode,
+      originAddress,
+    };
   }
 
   async init(): Promise<void> {
@@ -102,81 +195,147 @@ export class PasskeyClient {
   async register(userId: string, userName: string): Promise<PasskeyCredential> {
     await this.init();
     const registration = await registerPasskey(this.config, userId, userName);
+    const publicKeyHex = bufferToHex(registration.publicKey);
 
-    const session: PasskeySession = {
-      credentialId: registration.credentialId,
-      publicKeyHex: bufferToHex(registration.publicKey),
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
-      rpId: this.config.rpId,
-      feeMode: this.fee.mode,
-    };
+    const result = await this.registerPasskeySmartAccount(registration.publicKey, publicKeyHex);
+    const { contractAddress, contractName, originAddress, txid } = result;
 
+    const session = this.buildSession(
+      registration.credentialId,
+      publicKeyHex,
+      contractAddress,
+      contractName,
+      originAddress
+    );
     saveSession(session);
     this.persistCredential(session);
-
-    const senderAddress = `${this.config.contractAddress}.${this.config.contractName}`;
-    const alreadyRegistered = await isPublicKeyAuthorized(
-      this.config.network,
-      this.config.contractAddress,
-      this.config.contractName,
-      registration.publicKey,
-      senderAddress
-    );
-
-    let txid: string;
-    if (alreadyRegistered) {
-      txid = 'already-registered';
-    } else {
-      txid = await this.submitRegistration(registration.publicKey);
-      await this.waitForTx(txid);
-    }
 
     return {
       credentialId: registration.credentialId,
       publicKey: registration.publicKey,
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
+      contractAddress,
+      contractName,
+      contractId: `${contractAddress}.${contractName}`,
       txid,
     };
   }
 
-  async registerWithTestPasskey(): Promise<PasskeyCredential & { testPasskey: ReturnType<typeof createTestPasskey> }> {
+  private async registerPasskeySmartAccount(
+    publicKey: Uint8Array,
+    publicKeyHex: string
+  ): Promise<{ contractAddress: string; contractName: string; originAddress: string; txid: string }> {
+    const originKey = this.getOriginPrivateKey(publicKeyHex);
+    const originAddress = getAddressFromPrivateKey(originKey, this.getNetworkName());
+    const contractName = this.getSmartAccountName();
+    const contractAddress = originAddress;
+
+    let deployTxid: string | undefined;
+    const deployed = await isContractDeployed(this.config.network, contractAddress, contractName);
+    if (!deployed) {
+      const template = await this.relay.fetchAccountTemplate();
+      deployTxid = await broadcastContractDeploy(
+        {
+          contractName,
+          codeBody: template.source,
+          originPrivateKey: originKey,
+          network: this.config.network,
+          clarityVersion: ClarityVersion.Clarity5,
+        },
+        this.relay
+      );
+      await this.waitForTx(deployTxid);
+    }
+
+    const senderAddress = smartAccountContractId(contractAddress, contractName);
+    const alreadyRegistered = await isPublicKeyAuthorized(
+      this.config.network,
+      contractAddress,
+      contractName,
+      publicKey,
+      senderAddress
+    );
+
+    let registerTxid = 'already-registered';
+    if (!alreadyRegistered) {
+      registerTxid = await this.submitRegistrationForOrigin(publicKey, contractAddress, contractName, publicKeyHex);
+      await this.waitForTx(registerTxid);
+    }
+
+    await this.relay.ensureAccount(publicKeyHex, {
+      originAddress,
+      contractName,
+    });
+
+    return {
+      contractAddress,
+      contractName,
+      originAddress,
+      txid: registerTxid !== 'already-registered' ? registerTxid : deployTxid ?? 'pending',
+    };
+  }
+
+  private async submitRegistrationForOrigin(
+    publicKey: Uint8Array,
+    contractAddress: string,
+    contractName: string,
+    publicKeyHex: string
+  ): Promise<string> {
+    return this.broadcastCall(
+      'register',
+      [Cl.buffer(publicKey)],
+      { address: contractAddress, name: contractName },
+      publicKeyHex
+    );
+  }
+
+  async registerWithTestPasskey(options: {
+    contractAddress: string;
+    contractName: string;
+  }): Promise<PasskeyCredential & { testPasskey: ReturnType<typeof createTestPasskey> }> {
     await this.init();
     const testPasskey = createTestPasskey();
-    const txid = await this.submitRegistration(testPasskey.publicKey);
+    const publicKeyHex = bufferToHex(testPasskey.publicKey);
+
+    const { contractAddress, contractName } = options;
+    const txid = await this.submitRegistration(testPasskey.publicKey, contractAddress, contractName);
     await this.waitForTx(txid);
 
-    const session: PasskeySession = {
-      credentialId: testPasskey.credentialId,
-      publicKeyHex: bufferToHex(testPasskey.publicKey),
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
-      rpId: this.config.rpId,
-      feeMode: this.fee.mode,
-    };
+    const session = this.buildSession(testPasskey.credentialId, publicKeyHex, contractAddress, contractName);
     saveSession(session);
     this.persistCredential(session);
 
     return {
       credentialId: testPasskey.credentialId,
       publicKey: testPasskey.publicKey,
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
+      contractAddress,
+      contractName,
+      contractId: `${contractAddress}.${contractName}`,
       txid,
       testPasskey,
     };
   }
 
+  /** Simnet/tests: bind session to a pre-deployed per-user account contract. */
+  bindTestAccount(
+    testPasskey: ReturnType<typeof createTestPasskey>,
+    contractAddress: string,
+    contractName: string
+  ): PasskeySession {
+    const session = this.buildSession(
+      testPasskey.credentialId,
+      bufferToHex(testPasskey.publicKey),
+      contractAddress,
+      contractName
+    );
+    saveSession(session);
+    this.persistCredential(session);
+    return session;
+  }
+
   async signIn(): Promise<PasskeySession> {
     await this.init();
 
-    const stored = findStoredCredentials({
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
-      rpId: this.config.rpId,
-    });
-
+    const stored = findStoredCredentials(this.credentialFilter());
     if (stored.length === 0) {
       throw new Error('No passkeys found for this app. Sign up first on this device.');
     }
@@ -187,44 +346,92 @@ export class PasskeyClient {
     }));
 
     const { credentialId } = await authenticatePasskey(this.config, allowCredentials);
-    const match = findStoredCredentialById(credentialId, {
-      contractAddress: this.config.contractAddress,
-      contractName: this.config.contractName,
-      rpId: this.config.rpId,
-    });
-
+    const match = findStoredCredentialById(credentialId, this.credentialFilter());
     if (!match) {
       throw new Error('Passkey not recognized for this app');
     }
 
     const publicKey = hexToBuffer(match.publicKeyHex);
-    const senderAddress = `${this.config.contractAddress}.${this.config.contractName}`;
+
+    const originKey = deriveOriginPrivateKey(
+      match.publicKeyHex,
+      this.config.rpId,
+      this.config.network.chainId
+    );
+    const originAddress = getAddressFromPrivateKey(originKey, this.getNetworkName());
+    const contractAddress = originAddress;
+    const contractName = this.getSmartAccountName();
+    saveOriginPrivateKey(
+      originKeyScopeForAddress(originAddress, String(this.config.network.chainId)),
+      originKey
+    );
+
+    const senderAddress = smartAccountContractId(contractAddress, contractName);
     const authorized = await isPublicKeyAuthorized(
       this.config.network,
-      this.config.contractAddress,
-      this.config.contractName,
+      contractAddress,
+      contractName,
       publicKey,
       senderAddress
     );
 
     if (!authorized) {
-      throw new Error('Passkey is not registered on chain for this contract');
+      throw new Error('Passkey is not registered on chain for this smart account');
     }
 
-    const session: PasskeySession = {
-      credentialId: match.credentialId,
-      publicKeyHex: match.publicKeyHex,
-      contractAddress: match.contractAddress,
-      contractName: match.contractName,
-      rpId: match.rpId,
-      feeMode: this.fee.mode,
-    };
+    const session = this.buildSession(
+      match.credentialId,
+      match.publicKeyHex,
+      contractAddress,
+      contractName,
+      originAddress
+    );
     saveSession(session);
+    this.persistCredential(session);
     return session;
   }
 
-  async submitRegistration(publicKey: Uint8Array): Promise<string> {
-    return this.broadcastCall('register', [Cl.buffer(publicKey)]);
+  async submitRegistration(
+    publicKey: Uint8Array,
+    contractAddress?: string,
+    contractName?: string
+  ): Promise<string> {
+    const account = contractAddress && contractName
+      ? { address: contractAddress, name: contractName }
+      : this.getUserContract();
+    return this.broadcastCall('register', [Cl.buffer(publicKey)], account);
+  }
+
+  async invoke(
+    contract: string,
+    fn: string,
+    args?: ContractCallArgs,
+    publicKey?: Uint8Array,
+    credentialId?: string,
+    signCount = 1
+  ): Promise<string> {
+    await this.relay.ensureContract(contract);
+    const action = createInvokeAction(contract, fn, args);
+    const session = this.getSession();
+    const pk = publicKey ?? (session ? hexToBuffer(session.publicKeyHex) : null);
+    const cred = credentialId ?? session?.credentialId;
+    if (!pk || !cred) {
+      throw new Error('invoke requires an active session or explicit publicKey/credentialId');
+    }
+    return this.executeAction(action, pk, cred, signCount);
+  }
+
+  /** Passkey-signed STX transfer from the user's smart account. */
+  async transfer(recipient: string, amount: bigint): Promise<string> {
+    const session = this.getSession();
+    if (!session?.publicKeyHex || !session.credentialId) {
+      throw new Error('transfer requires an active passkey session');
+    }
+    return this.executeAction(
+      { type: 'transfer', recipient, amount },
+      hexToBuffer(session.publicKeyHex),
+      session.credentialId
+    );
   }
 
   async executeAction(
@@ -235,11 +442,12 @@ export class PasskeyClient {
   ): Promise<string> {
     await this.init();
     const resolvedAction = await this.resolveActionForFeeMode(action);
-    const senderAddress = `${this.config.contractAddress}.${this.config.contractName}`;
+    const account = this.getUserContract();
+    const senderAddress = `${account.address}.${account.name}`;
     const actionHash = await fetchActionHash(
       this.config.network,
-      this.config.contractAddress,
-      this.config.contractName,
+      account.address,
+      account.name,
       resolvedAction,
       senderAddress
     );
@@ -259,11 +467,12 @@ export class PasskeyClient {
   ): Promise<string> {
     await this.init();
     const resolvedAction = await this.resolveActionForFeeMode(action);
-    const senderAddress = `${this.config.contractAddress}.${this.config.contractName}`;
+    const account = this.getUserContract();
+    const senderAddress = `${account.address}.${account.name}`;
     const actionHash = await fetchActionHash(
       this.config.network,
-      this.config.contractAddress,
-      this.config.contractName,
+      account.address,
+      account.name,
       resolvedAction,
       senderAddress
     );
@@ -331,7 +540,12 @@ export class PasskeyClient {
     };
   }
 
-  private async broadcastCall(functionName: string, functionArgs: ClarityValue[]): Promise<string> {
+  private async broadcastCall(
+    functionName: string,
+    functionArgs: ClarityValue[],
+    account = this.getUserContract(),
+    publicKeyHex?: string
+  ): Promise<string> {
     const registrationUsesGasless =
       functionName === 'register' && this.fee.mode === 'account-pay';
 
@@ -341,11 +555,11 @@ export class PasskeyClient {
 
     return broadcastContractCall(
       {
-        contractAddress: this.config.contractAddress,
-        contractName: this.config.contractName,
+        contractAddress: account.address,
+        contractName: account.name,
         functionName,
         functionArgs,
-        originPrivateKey: this.originPrivateKey,
+        originPrivateKey: this.getOriginPrivateKey(publicKeyHex ?? loadSession()?.publicKeyHex),
         network: this.config.network,
       },
       feeOptions
@@ -353,6 +567,7 @@ export class PasskeyClient {
   }
 
   private async waitForTx(txid: string, maxAttempts = 40): Promise<void> {
+    if (txid === 'already-registered' || txid === 'pending') return;
     const normalizedTxid = normalizeTxId(txid);
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((r) => setTimeout(r, 1000));
@@ -383,6 +598,8 @@ export class PasskeyClient {
       publicKeyHex: session.publicKeyHex,
       contractAddress: session.contractAddress,
       contractName: session.contractName,
+      contractId: session.contractId,
+      deployerAddress: session.deployerAddress,
       rpId: session.rpId,
     });
   }

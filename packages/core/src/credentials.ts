@@ -3,6 +3,8 @@ export interface StoredCredential {
   publicKeyHex: string;
   contractAddress: string;
   contractName: string;
+  contractId: string;
+  deployerAddress: string;
   rpId: string;
 }
 
@@ -22,36 +24,23 @@ export function loadStoredCredentials(): StoredCredential[] {
 export function saveStoredCredential(credential: StoredCredential): void {
   if (typeof localStorage === 'undefined') return;
   const existing = loadStoredCredentials();
-  const next = existing.filter(
-    (item) =>
-      !(
-        item.credentialId === credential.credentialId &&
-        item.contractAddress === credential.contractAddress &&
-        item.contractName === credential.contractName
-      )
-  );
+  const next = existing.filter((item) => item.credentialId !== credential.credentialId);
   next.push(credential);
   localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(next));
 }
 
 export function findStoredCredentials(filter: {
-  contractAddress: string;
-  contractName: string;
+  deployerAddress: string;
   rpId: string;
 }): StoredCredential[] {
   return loadStoredCredentials().filter(
-    (item) =>
-      item.contractAddress === filter.contractAddress &&
-      item.contractName === filter.contractName &&
-      item.rpId === filter.rpId
+    (item) => item.deployerAddress === filter.deployerAddress && item.rpId === filter.rpId
   );
 }
 
 export function findStoredCredentialById(
   credentialId: string,
-  filter: { contractAddress: string; contractName: string; rpId: string }
+  filter: { deployerAddress: string; rpId: string }
 ): StoredCredential | null {
-  return (
-    findStoredCredentials(filter).find((item) => item.credentialId === credentialId) ?? null
-  );
+  return findStoredCredentials(filter).find((item) => item.credentialId === credentialId) ?? null;
 }

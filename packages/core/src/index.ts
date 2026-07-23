@@ -7,7 +7,8 @@ export { assertBroadcastTxid, normalizeTxId } from './broadcast.js';
 export { createTestPasskey, signWebAuthnAssertion, buildAuthenticatorData, buildClientDataJSON, computeWebAuthnSignedHash, rsToDer } from './webauthn-crypto.js';
 export { derToRS, normalizeLowS, compressP256, base64UrlEncode, base64UrlDecode, bufferToHex, hexToBuffer, concatBytes } from './crypto.js';
 export { registerPasskey, authenticatePasskey, signWithPasskey, verifyChallengeInClientData } from './webauthn.js';
-export { fetchActionHash, buildExecuteFunctionArgs, getExecuteFunctionName, withAccountPayFee, isPublicKeyAuthorized } from './actions.js';
+export { fetchActionHash, buildExecuteFunctionArgs, getExecuteFunctionName, withAccountPayFee, isPublicKeyAuthorized, isContractRegistered, createInvokeAction, createContractCallAction, buildContractCallArgs } from './actions.js';
+export { normalizeContractCallArgs, CONTRACT_CALL_UNUSED_PRINCIPAL } from './types.js';
 export { saveSession, loadSession, clearSession, hasSession } from './session.js';
 export {
   loadOriginPrivateKey,
@@ -34,6 +35,9 @@ export type {
   TransferAction,
   AddKeyAction,
   RemoveKeyAction,
+  ContractCallAction,
+  InvokeAction,
+  ContractCallArgs,
   FeeConfig,
   FeeMode,
 } from './types.js';
@@ -42,4 +46,16 @@ export {
   ACTION_ADD_KEY,
   ACTION_REMOVE_KEY,
   ACTION_TRANSFER_WITH_FEE,
+  ACTION_CONTRACT_CALL,
+  ACTION_INVOKE,
 } from './types.js';
+export {
+  resolveDeployerAddress,
+} from './types.js';
+export {
+  DEFAULT_SMART_ACCOUNT_NAME,
+  deriveOriginPrivateKey,
+  smartAccountContractId,
+  originKeyScopeForAddress,
+} from './derive-origin.js';
+export { broadcastContractDeploy, isContractDeployed } from './deploy.js';

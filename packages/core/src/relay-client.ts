@@ -43,12 +43,108 @@ export class RelayClient {
     return response.json() as Promise<{ ok: boolean; sponsorAddress?: string; network?: string }>;
   }
 
-  async getProjectBalance(): Promise<{ gasBalanceMicroStx: string; projectName?: string } | null> {
+  async getProjectBalance(): Promise<{
+    gasBalanceMicroStx: string;
+    projectName?: string;
+    gasTankAddress?: string;
+  } | null> {
     if (!this.apiKey) return null;
     const response = await fetch(`${this.relayUrl}/v1/project`, {
       headers: { Authorization: `Bearer ${this.apiKey}` },
     });
     if (!response.ok) return null;
-    return response.json() as Promise<{ gasBalanceMicroStx: string; projectName?: string }>;
+    return response.json() as Promise<{
+      gasBalanceMicroStx: string;
+      projectName?: string;
+      gasTankAddress?: string;
+    }>;
+  }
+
+  async fetchAccountTemplate(): Promise<{
+    contractName: string;
+    source: string;
+    clarityVersion: number;
+  }> {
+    const response = await fetch(`${this.relayUrl}/v1/accounts/template`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch account contract template: ${response.status}`);
+    }
+    return response.json() as Promise<{ contractName: string; source: string; clarityVersion: number }>;
+  }
+
+  async ensureContract(contractId: string): Promise<{
+    contractId: string;
+    registered: boolean;
+    alreadyRegistered: boolean;
+    functions: string[];
+    registrationTxid?: string;
+  }> {
+    if (!this.apiKey) {
+      throw new Error('ensureContract requires relayApiKey');
+    }
+    const response = await fetch(`${this.relayUrl}/v1/catalog/ensure`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({ contractId }),
+    });
+    const body = (await response.json()) as { error?: string; contractId?: string };
+    if (!response.ok) {
+      throw new Error(body.error ?? `Catalog ensure failed: ${response.status}`);
+    }
+    return body as {
+      contractId: string;
+      registered: boolean;
+      alreadyRegistered: boolean;
+      functions: string[];
+      registrationTxid?: string;
+    };
+  }
+
+  async ensureAccount(
+    publicKeyHex: string,
+    options: {
+      originAddress: string;
+      contractName?: string;
+    }
+  ): Promise<{
+    contractAddress: string;
+    contractName: string;
+    contractId: string;
+    alreadyRegistered: boolean;
+    originAddress: string;
+    registerTxid?: string;
+    factoryTxid?: string;
+  }> {
+    if (!this.apiKey) {
+      throw new Error('ensureAccount requires relayApiKey');
+    }
+    const response = await fetch(`${this.relayUrl}/v1/accounts/ensure`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        publicKeyHex,
+        originAddress: options.originAddress,
+        contractName: options.contractName,
+      }),
+    });
+    const body = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      throw new Error(body.error ?? `Account ensure failed: ${response.status}`);
+    }
+    return body as {
+      contractAddress: string;
+      contractName: string;
+      contractId: string;
+      alreadyRegistered: boolean;
+      originAddress: string;
+      registerTxid?: string;
+      factoryTxid?: string;
+    };
   }
 }
