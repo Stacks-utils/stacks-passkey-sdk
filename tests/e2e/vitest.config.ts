@@ -4,10 +4,9 @@ import { vitestSetupFilePath, getClarinetVitestsArgv } from '@stacks/clarinet-sd
 export default defineConfig({
   test: {
     environment: 'clarinet',
-    pool: 'forks',
-    isolate: false,
-    maxWorkers: 1,
-    setupFiles: [vitestSetupFilePath],
+    pool: 'threads',
+    fileParallelism: false,
+    setupFiles: [vitestSetupFilePath, './setup.ts'],
     environmentOptions: {
       clarinet: {
         ...getClarinetVitestsArgv(),
