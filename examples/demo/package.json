@@ -1,5 +1,6 @@
 {
   "name": "stacks-passkey-demo",
+  "description": "Unified Stacks Passkey portal — demo, developer docs, relay admin",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,9 +11,12 @@
   "dependencies": {
     "@stacks-passkey/core": "0.1.0",
     "@stacks-passkey/react": "0.1.0",
+    "@stacks/connect": "^8.2.6",
     "@stacks/network": "^7.0.2",
+    "@stacks/transactions": "^7.0.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.6.2"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
