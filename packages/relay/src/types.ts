@@ -11,6 +11,9 @@ export interface RelayPolicy {
 
 export interface RelayConfig {
   sponsorPrivateKey: string;
+  registrarPrivateKey?: string;
+  masterSecret: string;
+  sessionSecret: string;
   network: 'mainnet' | 'testnet' | 'devnet';
   port: number;
   host: string;
