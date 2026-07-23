@@ -5,18 +5,6 @@ authors = []
 telemetry = false
 cache_dir = "./.cache"
 
-# [contracts.counter]
-# path = "contracts/counter.clar"
-# epoch = "latest"
-
-# Check-checker settings:
-# trusted_sender: if true, inputs are trusted after tx_sender has been checked.
-# trusted_caller: if true, inputs are trusted after contract-caller has been checked.
-# callee_filter: if true, untrusted data may be passed into a private function without a
-# warning, if it gets checked inside. This check will also propagate up to the
-# caller.
-# More informations: https://www.hiro.so/blog/new-safety-checks-in-clarinet
-
 [repl.analysis]
 passes = ["check_checker"]
 check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
@@ -28,22 +16,37 @@ path = "contracts/webauthn-verifier.clar"
 clarity_version = 5
 epoch = "latest"
 
+[contracts.passkey-adapter]
+path = "contracts/passkey-adapter.clar"
+clarity_version = 5
+epoch = "latest"
+
 [contracts.passkey-account]
-path = "contracts/passkey-account.clar"
-clarity_version = 5
-epoch = "latest"
-
-[contracts.passkey-account-v2]
-path = "contracts/passkey-account.clar"
-clarity_version = 5
-epoch = "latest"
-
-[contracts.passkey-account-v3]
 path = "contracts/passkey-account.clar"
 clarity_version = 5
 epoch = "latest"
 
 [contracts.passkey-recovery]
 path = "contracts/passkey-recovery.clar"
+clarity_version = 5
+epoch = "latest"
+
+[contracts.passkey-factory]
+path = "contracts/passkey-factory.clar"
+clarity_version = 5
+epoch = "latest"
+
+[contracts.passkey-acc-user1]
+path = "contracts/passkey-account.clar"
+clarity_version = 5
+epoch = "latest"
+
+[contracts.smart-account]
+path = "contracts/passkey-account.clar"
+clarity_version = 5
+epoch = "latest"
+
+[contracts.mock-passkey-app]
+path = "tests/fixtures/mock-passkey-app.clar"
 clarity_version = 5
 epoch = "latest"
