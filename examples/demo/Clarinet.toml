@@ -1,0 +1,18 @@
+[project]
+name = "passkey-demo-app"
+description = "Example app contract for Stacks Passkey SDK demo"
+authors = []
+telemetry = false
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[contracts.passkey-adapter]
+path = "../../contracts/contracts/passkey-adapter.clar"
+clarity_version = 5
+epoch = "latest"
+
+[contracts.passkey-demo-app]
+path = "contracts/passkey-demo-app.clar"
+clarity_version = 5
+epoch = "latest"

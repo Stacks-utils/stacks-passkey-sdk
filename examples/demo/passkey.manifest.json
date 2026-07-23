@@ -1,0 +1,26 @@
+{
+  "name": "passkey-demo-app",
+  "contract": "ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-demo-app",
+  "functions": [
+    {
+      "name": "set-score",
+      "args": [
+        { "slot": "arg0", "type": "uint", "description": "Score value" },
+        { "slot": "arg2", "type": "principal", "description": "User principal" }
+      ]
+    },
+    {
+      "name": "add-score",
+      "args": [
+        { "slot": "arg0", "type": "uint", "description": "Delta (defaults to 1 if 0)" },
+        { "slot": "arg2", "type": "principal", "description": "User principal" }
+      ]
+    },
+    {
+      "name": "reset-score",
+      "args": [
+        { "slot": "arg2", "type": "principal", "description": "User principal" }
+      ]
+    }
+  ]
+}
