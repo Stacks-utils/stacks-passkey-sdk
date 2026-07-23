@@ -14,6 +14,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "spk": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -23,6 +26,7 @@
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
     "@stacks/common": "^7.0.2",
+    "@stacks/connect": "^8.2.6",
     "@stacks/network": "^7.0.2",
     "@stacks/transactions": "^7.0.2",
     "cbor-x": "^1.6.0"
