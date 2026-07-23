@@ -1,17 +1,46 @@
+# Dependencies & build
 node_modules/
 dist/
 .cache/
+coverage/
+*.tsbuildinfo
 *.log
+npm-debug.log*
+pnpm-debug.log*
 .DS_Store
 
-# Secrets — never commit
+# =============================================================================
+# Secrets — NEVER commit
+# Verify before push: git check-ignore -v packages/relay/.env examples/demo/.env
+# =============================================================================
+
+# Environment files (relay secrets, API keys, local URLs)
 .env
 .env.*
-!.env.example
 **/.env
 **/.env.local
-**/sponsor.key
+**/.env.*.local
+!.env.example
+!**/.env.example
+!**/.env.local.example
+
+# Private keys & certificates
 **/*.key
 **/*.pem
-contracts/settings/Testnet.toml
-contracts/settings/Mainnet.toml
+**/*.p12
+**/*.pfx
+
+# Clarinet deploy account mnemonics (real testnet/mainnet keys)
+**/settings/Testnet.toml
+**/settings/Mainnet.toml
+# Note: contracts/settings/Devnet.toml uses public Clarinet simnet defaults only.
+
+# Relay persisted state (wallet tenants, API key hashes, legacy plaintext keys)
+packages/relay/data/
+**/gas-tank.json
+**/accounts.json
+**/catalog.json
+
+# Clarinet local artifacts
+**/history.txt
+**/costs-reports.json
