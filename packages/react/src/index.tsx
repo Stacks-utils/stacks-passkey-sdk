@@ -1,8 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { hexToBytes } from '@stacks/common';
 import {
   PasskeyClient,
-  loadSession,
   clearSession,
   type PasskeyConfig,
   type PasskeySession,
@@ -46,16 +44,24 @@ export function usePasskeyClient(): PasskeyClient {
 
 export function usePasskeyAccount() {
   const client = usePasskeyClient();
-  const [session, setSession] = useState<PasskeySession | null>(() => loadSession());
+  const [session, setSession] = useState<PasskeySession | null>(() => client.getSession());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gasBalance, setGasBalance] = useState<string | null>(null);
+  const [gasTankAddress, setGasTankAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    client.getRelayClient()
+    client
+      .getRelayClient()
       .getProjectBalance()
-      .then((b) => setGasBalance(b?.gasBalanceMicroStx ?? null))
-      .catch(() => setGasBalance(null));
+      .then((b) => {
+        setGasBalance(b?.gasBalanceMicroStx ?? null);
+        setGasTankAddress(b?.gasTankAddress ?? null);
+      })
+      .catch(() => {
+        setGasBalance(null);
+        setGasTankAddress(null);
+      });
   }, [client]);
 
   const register = useCallback(
@@ -105,22 +111,35 @@ export function usePasskeyAccount() {
 
   const transfer = useCallback(
     async (recipient: string, amount: bigint) => {
-      const current = loadSession();
-      if (!current) throw new Error('No active passkey session');
       setLoading(true);
       setError(null);
       try {
-        const publicKey = hexToBytes(current.publicKeyHex);
-        const txid = await client.executeAction(
-          { type: 'transfer', recipient, amount },
-          publicKey,
-          current.credentialId
-        );
+        const txid = await client.transfer(recipient, amount);
         const balance = await client.getRelayClient().getProjectBalance();
         setGasBalance(balance?.gasBalanceMicroStx ?? null);
         return txid;
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Transfer failed';
+        setError(message);
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [client]
+  );
+
+  const invoke = useCallback(
+    async (contract: string, fn: string, args?: Parameters<PasskeyClient['invoke']>[2]) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const txid = await client.invoke(contract, fn, args);
+        const balance = await client.getRelayClient().getProjectBalance();
+        setGasBalance(balance?.gasBalanceMicroStx ?? null);
+        return txid;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Invoke failed';
         setError(message);
         throw e;
       } finally {
@@ -136,10 +155,12 @@ export function usePasskeyAccount() {
     loading,
     error,
     gasBalance,
+    gasTankAddress,
     register,
     signIn,
     logout,
     transfer,
+    invoke,
     feeMode: client.getFeeMode(),
   };
 }
