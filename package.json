@@ -15,7 +15,8 @@
     "test:e2e": "npm run test:e2e -w stacks-passkey-e2e",
     "dev:relay": "npm run dev -w @stacks-passkey/relay",
     "dev:demo": "npm run dev -w stacks-passkey-demo",
-    "dev:admin": "npm run dev -w stacks-passkey-relay-admin"
+    "dev:admin": "npm run dev -w stacks-passkey-demo",
+    "dev:portal": "npm run dev -w stacks-passkey-demo"
   },
   "engines": {
     "node": ">=20"
