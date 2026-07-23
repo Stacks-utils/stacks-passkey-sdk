@@ -5,6 +5,7 @@ export type Project = {
   id: string;
   name: string;
   apiKey: string;
+  gasTankAddress?: string;
   gasBalanceMicroStx: string;
   totalSpentMicroStx: string;
   txCount: number;
@@ -23,6 +24,7 @@ export type SponsorLog = {
 export type HealthInfo = {
   ok: boolean;
   sponsorAddress?: string;
+  gasTankAddress?: string;
   network?: string;
 };
 

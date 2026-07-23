@@ -29,17 +29,17 @@ function CopyButton({ value }: { value: string }) {
 }
 
 function ConnectGate() {
-  const { connecting, error, connectWallet, address, disconnectWallet } = useWallet();
+  const { connecting, error, connectWallet, skipWallet, address, disconnectWallet } = useWallet();
 
   return (
     <div className="connect-screen">
       <div className="connect-card">
         <div className="connect-logo">SP</div>
         <h1>Relay Admin Portal</h1>
-        <p>Connect your Stacks wallet to manage API keys, gas tanks, and sponsorship activity.</p>
+        <p>Manage API keys and gas tanks. Connect the relay sponsor wallet, or continue with your admin API key only.</p>
         <ul className="connect-features">
           <li>Create and manage developer API keys</li>
-          <li>Monitor gas tank balances per project</li>
+          <li>Each API key maps to a gas tank deposit address</li>
           <li>View sponsored transaction activity</li>
         </ul>
         {address ? (
@@ -53,10 +53,15 @@ function ConnectGate() {
             </button>
           </>
         ) : (
-          <button type="button" className="btn btn-primary" disabled={connecting} onClick={connectWallet} style={{ width: '100%', justifyContent: 'center' }}>
-            {connecting && <span className="spinner" />}
-            {connecting ? 'Connecting…' : 'Connect Wallet'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button type="button" className="btn btn-primary" disabled={connecting} onClick={connectWallet} style={{ width: '100%', justifyContent: 'center' }}>
+              {connecting && <span className="spinner" />}
+              {connecting ? 'Connecting…' : 'Connect Sponsor Wallet'}
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={connecting} onClick={skipWallet} style={{ width: '100%', justifyContent: 'center' }}>
+              Continue with Admin API Key
+            </button>
+          </div>
         )}
         {error && <div className="connect-error">{error}</div>}
       </div>
@@ -100,8 +105,8 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (wallet.authorized) void load();
-  }, [wallet.authorized, load]);
+    if (wallet.authorized || wallet.adminReady) void load();
+  }, [wallet.authorized, wallet.adminReady, load]);
 
   const loadLogs = useCallback(async (projectId: string) => {
     setLogsLoading(true);
@@ -340,6 +345,7 @@ function Dashboard() {
                           <tr>
                             <th>Project</th>
                             <th>API Key</th>
+                            <th>Gas tank address</th>
                             <th>Gas balance</th>
                             <th>Spent</th>
                             <th>Txs</th>
@@ -362,6 +368,11 @@ function Dashboard() {
                                     {revealedKeys.has(p.id) ? 'Hide' : 'Reveal'}
                                   </button>
                                   <CopyButton value={p.apiKey} />
+                                </div>
+                              </td>
+                              <td>
+                                <div className="mono" style={{ fontSize: '0.72rem' }} title={p.gasTankAddress}>
+                                  {p.gasTankAddress ? truncateAddress(p.gasTankAddress) : '—'}
                                 </div>
                               </td>
                               <td>
@@ -470,7 +481,7 @@ function Dashboard() {
 function AppShell() {
   const wallet = useWallet();
 
-  if (!wallet.address || !wallet.authorized) {
+  if (!wallet.authorized && !wallet.adminReady) {
     return <ConnectGate />;
   }
 
