@@ -135,6 +135,30 @@ export async function fetchActionHash(
 
   const { contract, function: functionName, args } = resolveInvokeAction(action);
   const normalized = normalizeContractCallArgs(args);
+  if (action.type === 'invoke' && action.feeRecipient !== undefined && action.feeAmount !== undefined) {
+    const { address, name } = parseContractId(contract);
+    const target = `${address}.${name}`;
+    const result = await fetchCallReadOnlyFunction({
+      contractAddress,
+      contractName,
+      functionName: 'compute-invoke-with-fee-hash',
+      functionArgs: [
+        Cl.principal(target),
+        Cl.stringAscii(functionName),
+        Cl.uint(normalized.arg0),
+        Cl.uint(normalized.arg1),
+        Cl.principal(normalized.arg2),
+        Cl.principal(normalized.arg3),
+        Cl.buffer(normalized.arg4),
+        Cl.principal(action.feeRecipient),
+        Cl.uint(action.feeAmount),
+      ],
+      network,
+      senderAddress,
+    });
+    return hashToBytes(result);
+  }
+
   const result = await fetchCallReadOnlyFunction({
     contractAddress,
     contractName,
@@ -205,6 +229,18 @@ export function buildExecuteFunctionArgs(
 
   const { contract, function: functionName, args } = resolveInvokeAction(action);
   const { address, name } = parseContractId(contract);
+  if (action.type === 'invoke' && action.feeRecipient !== undefined && action.feeAmount !== undefined) {
+    return [
+      Cl.contractPrincipal(address, name),
+      Cl.stringAscii(functionName),
+      ...buildInvokeArgs(args),
+      Cl.principal(action.feeRecipient),
+      Cl.uint(action.feeAmount),
+      Cl.buffer(publicKey),
+      ...webAuthnArgs,
+    ];
+  }
+
   return [
     Cl.contractPrincipal(address, name),
     Cl.stringAscii(functionName),
@@ -226,6 +262,9 @@ export function getExecuteFunctionName(action: PasskeyAction): string {
     case 'remove-key':
       return 'remove-key';
     case 'invoke':
+      if (action.feeRecipient !== undefined && action.feeAmount !== undefined) {
+        return 'execute-via-adapter-with-fee';
+      }
       return 'execute-via-adapter';
   }
 }
@@ -235,6 +274,14 @@ export function withAccountPayFee(
   feeRecipient: string,
   feeAmount: bigint
 ): TransferAction {
+  return { ...action, feeRecipient, feeAmount };
+}
+
+export function withAccountPayInvokeFee(
+  action: InvokeAction,
+  feeRecipient: string,
+  feeAmount: bigint
+): InvokeAction {
   return { ...action, feeRecipient, feeAmount };
 }
 
