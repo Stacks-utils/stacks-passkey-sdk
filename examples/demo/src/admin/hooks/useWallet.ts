@@ -182,19 +182,16 @@ export function useWalletGate() {
     };
   }, [restoreSession, refreshWallets]);
 
-  const signIn = useCallback(async (stxAddress?: string) => {
-    const target = stxAddress ?? address;
-    if (!target) throw new Error('Connect a wallet first');
-
+  const runSignIn = useCallback(async (stxAddress: string) => {
     setPhase('signing');
     setError(null);
     try {
       await withTimeout(
-        signChallenge(target),
+        signChallenge(stxAddress),
         SIGN_TIMEOUT_MS,
         'Signing timed out. Approve the sign-in message in Leather.'
       );
-      setAddress(target);
+      setAddress(stxAddress);
       setAuthorized(true);
       setError(null);
     } catch (e) {
@@ -206,7 +203,16 @@ export function useWalletGate() {
     } finally {
       setPhase('idle');
     }
-  }, [address]);
+  }, []);
+
+  const signIn = useCallback(
+    async (stxAddress?: string) => {
+      const target = stxAddress ?? address;
+      if (!target) throw new Error('Connect a wallet first');
+      await runSignIn(target);
+    },
+    [address, runSignIn]
+  );
 
   const connectWallet = useCallback(() => {
     setError(null);
@@ -225,9 +231,12 @@ export function useWalletGate() {
       SIGN_TIMEOUT_MS,
       'Connection timed out. Approve the request in Leather, then try again.'
     )
-      .then((stx) => {
+      .then(async (stx) => {
         setAddress(stx);
-        setPhase('idle');
+        setPhase('signing');
+        // Brief pause so the extension can finish the connect flow before sign opens.
+        await new Promise((resolve) => window.setTimeout(resolve, 300));
+        await runSignIn(stx);
       })
       .catch((e) => {
         const message = e instanceof Error ? e.message : 'Wallet connection failed';
@@ -236,7 +245,7 @@ export function useWalletGate() {
         clearSessionToken();
         setPhase('idle');
       });
-  }, [isBrave]);
+  }, [isBrave, runSignIn]);
 
   const disconnectWallet = useCallback(() => {
     disconnect();
