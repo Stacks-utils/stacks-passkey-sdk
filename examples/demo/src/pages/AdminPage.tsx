@@ -1,9 +1,12 @@
-import { AdminDashboard } from '../admin/AdminDashboard.js';
+import { AdminShell } from '../admin/AdminDashboard.js';
+import { WalletProvider } from '../admin/WalletProvider.js';
 
 export function AdminPage() {
   return (
-    <div className="admin-page">
-      <AdminDashboard />
-    </div>
+    <WalletProvider>
+      <div className="admin-page">
+        <AdminShell />
+      </div>
+    </WalletProvider>
   );
 }
