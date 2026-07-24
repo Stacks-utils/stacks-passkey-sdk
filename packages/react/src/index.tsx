@@ -1,11 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  PasskeyClient,
-  clearSession,
-  type PasskeyConfig,
-  type PasskeySession,
-  type FeeConfig,
-} from '@stacks-passkey/core';
+import { PasskeyClient, normalizeRpId, clearSession, type PasskeyConfig, type PasskeySession, type FeeConfig } from '@stacks-passkey/core';
 
 export type PasskeyProviderConfig = PasskeyConfig & {
   relayUrl: string;
@@ -23,8 +17,11 @@ export function PasskeyProvider({
   children: ReactNode;
 }) {
   const clientRef = useRef<PasskeyClient | null>(null);
-  if (!clientRef.current) {
+  const configKeyRef = useRef('');
+  const configKey = `${normalizeRpId(config.rpId)}:${config.deployerAddress}:${config.network.chainId}`;
+  if (!clientRef.current || configKeyRef.current !== configKey) {
     clientRef.current = new PasskeyClient(config);
+    configKeyRef.current = configKey;
   }
 
   useEffect(() => {
