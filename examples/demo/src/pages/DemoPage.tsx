@@ -5,6 +5,7 @@ import type { FeeMode } from '@stacks-passkey/core';
 import { testnetConfig } from '../config.js';
 import { DemoApp } from '../demo/DemoApp.js';
 import { DEMO_COPY } from '../content/portal-content.js';
+import { ScrollReveal } from '../components/ScrollReveal.js';
 
 function ConfigPanel({
   feeMode,
@@ -66,19 +67,18 @@ export function DemoPage() {
   );
 
   return (
-    <div className="playground-page">
-      <header className="playground-header">
-        <div>
-          <span className="playground-label">Live playground</span>
+    <div className="playground-page portal-page">
+      <header className="portal-page-hero playground-header">
+        <ScrollReveal>
           <h1>Try the SDK on testnet</h1>
-          <p className="page-lead">
+          <p className="portal-lead">
             Sign up with a passkey, self-deploy a smart account, transfer STX, and invoke{' '}
             <code>set-score</code> on <code>passkey-demo-app</code> — the same SDK calls you wire into your app.
           </p>
-        </div>
-        <div className="playground-quickstart">
-          <code>npm i @stacks-passkey/core @stacks-passkey/react</code>
-        </div>
+          <div className="playground-quickstart">
+            <code>npm i @stacks-passkey/core @stacks-passkey/react</code>
+          </div>
+        </ScrollReveal>
       </header>
 
       <div className="playground-shell">
