@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  addressExplorerUrl,
   cacheApiKey,
   getCachedApiKey,
   microStxToStx,
@@ -13,8 +13,8 @@ import {
   type SponsorLog,
   type WalletInfo,
 } from './api.js';
-import { useWalletGate } from './hooks/useWallet.js';
-import { useWallet, WalletProvider } from './WalletProvider.js';
+import { addressExplorerUrl, explorerNetwork, txExplorerUrl } from '../explorer.js';
+import { useWallet } from './WalletProvider.js';
 import { Logo } from '../components/Logo.js';
 
 type Tab = 'overview' | 'keys' | 'activity';
@@ -103,18 +103,32 @@ function ConnectGate() {
     walletOptions,
   } = useWallet();
 
-  const needsSign = Boolean(address) && !authorized;
+  const needsSignRetry = Boolean(address) && !authorized;
+
+  const primaryLabel =
+    phase === 'connecting'
+      ? 'Opening wallet…'
+      : phase === 'signing'
+        ? 'Approve in wallet…'
+        : needsSignRetry
+          ? 'Retry sign in'
+          : isBrave
+            ? 'Connect with Leather'
+            : 'Connect wallet';
 
   return (
     <div className="connect-screen">
       <div className="connect-card">
         <Logo size={56} />
-        <h1>Relay admin</h1>
+        <h1>Dev portal</h1>
         <p>
-          Connect your Stacks wallet to manage gas sponsorship. Each wallet gets a dedicated sponsor address
-          derived from your wallet — deposit STX there (not to your wallet) to fund all API keys under your
-          account.
+          Gas tanks &amp; API keys — connect your Stacks wallet to manage gas sponsorship. Each wallet gets a
+          dedicated sponsor address derived from your wallet; deposit STX there (not to your wallet) to fund all
+          API keys under your account.
         </p>
+        <Link to="/docs/relay" className="btn btn-outline btn-sm connect-guide-link">
+          Relay setup guide
+        </Link>
 
         {isBrave && (
           <div className="connect-brave-notice">
@@ -128,7 +142,7 @@ function ConnectGate() {
               <li>Unlock <strong>Leather</strong> in the toolbar, set <strong>Testnet</strong>, then use Connect → Sign in</li>
             </ol>
             <p className="connect-brave-footnote">
-              Leather uses its own extension API — not Ethereum wallet settings. If connect still fails in Brave, use Chrome for relay admin.
+              Leather uses its own extension API — not Ethereum wallet settings. If connect still fails in Brave, use Chrome for the dev portal.
             </p>
           </div>
         )}
@@ -165,52 +179,40 @@ function ConnectGate() {
         )}
 
         <div className="connect-actions">
-          {needsSign ? (
-            <>
-              <button
-                type="button"
-                className="btn btn-primary connect-primary-btn"
-                disabled={connecting || !signReady}
-                onClick={() => {
-                  void signIn().catch(() => undefined);
-                }}
-              >
-                {phase === 'signing' && <span className="spinner" />}
-                {phase === 'signing' ? 'Waiting for signature…' : 'Sign in with wallet'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary connect-secondary-btn"
-                disabled={connecting}
-                onClick={disconnectWallet}
-              >
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="btn btn-primary connect-primary-btn"
-                disabled={connecting || (isBrave && !leatherReady)}
-                onClick={connectWallet}
-              >
-                {phase === 'connecting' && <span className="spinner" />}
-                {phase === 'connecting'
-                  ? 'Opening Leather…'
-                  : isBrave
-                    ? 'Connect with Leather'
-                    : 'Connect wallet'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary connect-secondary-btn"
-                disabled={connecting}
-                onClick={refreshWallets}
-              >
-                Refresh wallet detection
-              </button>
-            </>
+          <button
+            type="button"
+            className="btn btn-primary connect-primary-btn"
+            disabled={connecting || (isBrave && !leatherReady && !address) || (needsSignRetry && !signReady)}
+            onClick={() => {
+              if (needsSignRetry) {
+                void signIn().catch(() => undefined);
+              } else {
+                connectWallet();
+              }
+            }}
+          >
+            {(phase === 'connecting' || phase === 'signing') && <span className="spinner" />}
+            {primaryLabel}
+          </button>
+          {(address || needsSignRetry) && (
+            <button
+              type="button"
+              className="btn btn-secondary connect-secondary-btn"
+              disabled={connecting}
+              onClick={disconnectWallet}
+            >
+              Disconnect
+            </button>
+          )}
+          {!address && (
+            <button
+              type="button"
+              className="btn btn-secondary connect-secondary-btn"
+              disabled={connecting}
+              onClick={refreshWallets}
+            >
+              Refresh wallet detection
+            </button>
           )}
         </div>
 
@@ -220,10 +222,10 @@ function ConnectGate() {
               ? 'Leather should open from your toolbar. If not, click the Leather icon — it may be waiting for approval.'
               : 'Pick a wallet in the popup, then approve in your extension.'
             : phase === 'signing'
-              ? 'Approve the sign-in message in Leather.'
-              : needsSign
-                ? 'Wallet connected. Click Sign in with wallet to finish.'
-                : 'Set your wallet to Testnet before connecting.'}
+              ? 'Approve the sign-in message in your wallet to finish.'
+              : needsSignRetry
+                ? 'Connection succeeded but sign-in did not. Click Retry sign in.'
+                : 'Set your wallet to Testnet before connecting. Sign-in opens automatically after connect.'}
         </p>
 
         {error && <div className="connect-error">{error}</div>}
@@ -316,19 +318,14 @@ function Dashboard() {
     return Number((balance * 100n) / total);
   }, [walletInfo]);
 
-  const txExplorer = (txid: string) => {
-    const id = txid.startsWith('0x') ? txid.slice(2) : txid;
-    const base =
-      wallet.network === 'mainnet' ? 'https://explorer.hiro.so/txid' : 'https://explorer.hiro.so/txid?chain=testnet';
-    return `${base}/${id}`;
-  };
+  const chain = explorerNetwork(wallet.network);
 
   return (
     <div className="admin-layout">
       <aside className="sidebar">
         <div className="sidebar-brand">
           <Logo size={28} />
-          <span>Relay admin</span>
+          <span>Dev portal</span>
         </div>
         <nav className="sidebar-nav">
           <button type="button" className={`nav-item${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>
@@ -422,7 +419,7 @@ function Dashboard() {
                         <CopyButton value={walletInfo.sponsorAddress} />
                         <a
                           className="btn btn-secondary btn-sm"
-                          href={addressExplorerUrl(walletInfo.sponsorAddress, wallet.network)}
+                          href={addressExplorerUrl(walletInfo.sponsorAddress, chain)}
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -563,7 +560,7 @@ function Dashboard() {
                     <div className="logs-list">
                       {logs.map((log) => (
                         <div key={log.id} className="log-item">
-                          <a href={txExplorer(log.txid)} target="_blank" rel="noreferrer">
+                          <a href={txExplorerUrl(log.txid, chain)} target="_blank" rel="noreferrer">
                             {truncateAddress(log.txid)}
                           </a>
                           <span className={`tag tag-${log.billingMode === 'gasless' ? 'gasless' : 'account'}`}>
@@ -586,16 +583,12 @@ function Dashboard() {
   );
 }
 
-function AdminShell() {
+export function AdminShell() {
   const wallet = useWallet();
   if (!wallet.authorized) return <ConnectGate />;
   return <Dashboard />;
 }
 
 export function AdminDashboard() {
-  return (
-    <WalletProvider>
-      <AdminShell />
-    </WalletProvider>
-  );
+  return <AdminShell />;
 }
