@@ -17,6 +17,7 @@
 (define-constant ACTION-REMOVE-KEY u3)
 (define-constant ACTION-TRANSFER-WITH-FEE u4)
 (define-constant ACTION-INVOKE u5)
+(define-constant ACTION-INVOKE-WITH-FEE u6)
 
 (use-trait exec-trait .passkey-adapter.passkey-exec-trait)
 
@@ -127,6 +128,40 @@
   )
 )
 
+;; Invoke registered app contract and reimburse relay fee from contract STX balance.
+(define-public (execute-via-adapter-with-fee
+    (target <exec-trait>)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+    (fee-recipient principal)
+    (fee-amount uint)
+    (pubkey (buff 33))
+    (signature (buff 64))
+    (authenticator-data (buff 512))
+    (client-data-json (buff 1024))
+  )
+  (let (
+      (target-principal (contract-of target))
+      (action-hash (hash-invoke-with-fee target-principal function-name arg0 arg1 arg2 arg3 arg4 fee-recipient fee-amount))
+      (key-info (unwrap! (map-get? authorized-keys pubkey) err-key-not-found))
+    )
+    (begin
+      (try! (verify-and-update pubkey signature authenticator-data client-data-json action-hash key-info))
+      (try! (as-contract? ((with-stx fee-amount))
+        (try! (stx-transfer? fee-amount tx-sender fee-recipient))
+      ))
+      (try! (contract-call? .passkey-adapter forward-invoke target function-name arg0 arg1 arg2 arg3 arg4))
+      (var-set nonce (+ (var-get nonce) u1))
+      (print { event: "invoke-with-fee", target: target-principal, function-name: function-name, fee-recipient: fee-recipient, fee-amount: fee-amount })
+      (ok true)
+    )
+  )
+)
+
 ;; Invoke registered app contract via universal adapter (passkey-invoke-trait).
 (define-public (execute-via-adapter
     (target <exec-trait>)
@@ -194,6 +229,20 @@
     (arg4 (buff 1024))
   )
   (ok (hash-invoke target function-name arg0 arg1 arg2 arg3 arg4))
+)
+
+(define-read-only (compute-invoke-with-fee-hash
+    (target principal)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+    (fee-recipient principal)
+    (fee-amount uint)
+  )
+  (ok (hash-invoke-with-fee target function-name arg0 arg1 arg2 arg3 arg4 fee-recipient fee-amount))
 )
 
 (define-read-only (verify-action-signature
@@ -305,5 +354,32 @@
     arg2: arg2,
     arg3: arg3,
     arg4: arg4,
+  })))
+)
+
+(define-private (hash-invoke-with-fee
+    (target principal)
+    (function-name (string-ascii 128))
+    (arg0 uint)
+    (arg1 uint)
+    (arg2 principal)
+    (arg3 principal)
+    (arg4 (buff 1024))
+    (fee-recipient principal)
+    (fee-amount uint)
+  )
+  (sha256 (unwrap-panic (to-consensus-buff? {
+    version: u5,
+    nonce: (var-get nonce),
+    action-type: ACTION-INVOKE-WITH-FEE,
+    target: target,
+    function-name: function-name,
+    arg0: arg0,
+    arg1: arg1,
+    arg2: arg2,
+    arg3: arg3,
+    arg4: arg4,
+    fee-recipient: fee-recipient,
+    fee-amount: fee-amount,
   })))
 )
