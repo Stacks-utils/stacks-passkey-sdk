@@ -60,7 +60,6 @@ export function DemoPage() {
         mode: feeMode,
         relayUrl,
         relayApiKey,
-        maxFeeMicroStx: 100_000n,
       },
     }),
     [feeMode, relayApiKey]
