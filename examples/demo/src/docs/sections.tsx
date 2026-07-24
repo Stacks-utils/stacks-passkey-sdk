@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { HOW_IT_WORKS, PLAYGROUND_FEATURES } from '../content/portal-content.js';
-import { HOSTED_RELAY_URL, LOCAL_RELAY_URL } from '../config.js';
+import { HOSTED_RELAY_URL, LOCAL_RELAY_URL, NPM_PACKAGES, SDK_VERSION } from '../config.js';
 import { Callout, CodeBlock, DocLinkGrid, DocPage, FeatureGrid, StepGuide } from './components.js';
 
 const TESTNET_DEPLOYER = 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ';
@@ -12,6 +12,28 @@ export function GettingStartedSection() {
       title="Getting started"
       lead="Add passkey smart accounts to your Stacks app in under an hour — no browser wallet extension, no seed phrases."
     >
+      <Callout title={`Published on npm (v${SDK_VERSION})`} variant="info">
+        <p>
+          Install from the registry — no need to clone this repo for frontend integration:
+        </p>
+        <CodeBlock>{`npm install @stacks-passkey/core @stacks-passkey/react @stacks/network`}</CodeBlock>
+        <p>
+          Package pages:{' '}
+          <a href={NPM_PACKAGES.core} target="_blank" rel="noreferrer">
+            @stacks-passkey/core
+          </a>
+          {' · '}
+          <a href={NPM_PACKAGES.react} target="_blank" rel="noreferrer">
+            @stacks-passkey/react
+          </a>
+          {' · '}
+          <a href={NPM_PACKAGES.relay} target="_blank" rel="noreferrer">
+            @stacks-passkey/relay
+          </a>{' '}
+          (self-hosted relay)
+        </p>
+      </Callout>
+
       <section className="doc-hero-block">
         <h2>Why use this SDK?</h2>
         <FeatureGrid
@@ -195,12 +217,16 @@ export function OverviewSection() {
       </ol>
 
       <h2>Packages</h2>
+      <p>
+        All packages are published on npm at <strong>v{SDK_VERSION}</strong>.
+      </p>
       <div className="doc-table-wrap">
         <table className="doc-table">
           <thead>
             <tr>
               <th>Package</th>
               <th>You use it for</th>
+              <th>npm</th>
             </tr>
           </thead>
           <tbody>
@@ -208,19 +234,34 @@ export function OverviewSection() {
               <td>
                 <code>@stacks-passkey/core</code>
               </td>
-              <td>PasskeyClient, WebAuthn, transfer(), invoke(), relay client</td>
+              <td>PasskeyClient, WebAuthn, transfer(), invoke(), relay client, <code>spk</code> CLI</td>
+              <td>
+                <a href={NPM_PACKAGES.core} target="_blank" rel="noreferrer">
+                  View package
+                </a>
+              </td>
             </tr>
             <tr>
               <td>
                 <code>@stacks-passkey/react</code>
               </td>
               <td>PasskeyProvider + usePasskeyAccount() hooks</td>
+              <td>
+                <a href={NPM_PACKAGES.react} target="_blank" rel="noreferrer">
+                  View package
+                </a>
+              </td>
             </tr>
             <tr>
               <td>
                 <code>@stacks-passkey/relay</code>
               </td>
-              <td>Self-hosted gas sponsor (optional — use a hosted relay + API key instead)</td>
+              <td>Self-hosted gas sponsor (optional — use hosted relay + API key instead)</td>
+              <td>
+                <a href={NPM_PACKAGES.relay} target="_blank" rel="noreferrer">
+                  View package
+                </a>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -249,13 +290,28 @@ export function OverviewSection() {
 
 export function InstallSection() {
   return (
-    <DocPage title="Install packages" lead="Step 1 of the integration guide.">
+    <DocPage title="Install packages" lead="Step 1 of the integration guide — install from npm (v0.1.0).">
       <StepGuide
         steps={[
           {
             title: 'Add npm packages',
-            summary: 'Install core, React bindings, and Stacks network constants.',
-            detail: <CodeBlock>{`npm install @stacks-passkey/core @stacks-passkey/react @stacks/network`}</CodeBlock>,
+            summary: 'Install core, React bindings, and Stacks network constants from the public registry.',
+            detail: (
+              <>
+                <CodeBlock>{`npm install @stacks-passkey/core @stacks-passkey/react @stacks/network`}</CodeBlock>
+                <p>
+                  Published packages:{' '}
+                  <a href={NPM_PACKAGES.core} target="_blank" rel="noreferrer">
+                    core
+                  </a>
+                  ,{' '}
+                  <a href={NPM_PACKAGES.react} target="_blank" rel="noreferrer">
+                    react
+                  </a>
+                  . The <code>spk</code> CLI ships with core (<code>npx spk help</code>).
+                </p>
+              </>
+            ),
           },
           {
             title: 'Get relay credentials',
@@ -742,6 +798,21 @@ export function AppContractSection() {
 export function RelaySection() {
   return (
     <DocPage title="Relay setup" lead="Self-host gas sponsorship and catalog (optional).">
+      <Callout variant="tip">
+        For most integrations, use the hosted testnet relay at <code>{HOSTED_RELAY_URL}</code> and create an API key in
+        the <Link to="/portal">dev portal</Link>. Self-host only when you need your own sponsor key, allowlists, or
+        mainnet.
+      </Callout>
+      <h3>Install from npm</h3>
+      <CodeBlock>{`npm install @stacks-passkey/relay
+# CLI: npx stacks-passkey-relay`}</CodeBlock>
+      <p>
+        Package:{' '}
+        <a href={NPM_PACKAGES.relay} target="_blank" rel="noreferrer">
+          @stacks-passkey/relay on npm
+        </a>
+      </p>
+      <h3>Run from this monorepo (development)</h3>
       <CodeBlock>{`cp packages/relay/.env.example packages/relay/.env
 ./scripts/setup-relay-key.sh
 npm run dev:relay`}</CodeBlock>
@@ -932,6 +1003,13 @@ await client.executeActionWithTestPasskey(action, testPasskey);`}</CodeBlock>
 export function CliSection() {
   return (
     <DocPage title="spk CLI">
+      <p>
+        The CLI ships with{' '}
+        <a href={NPM_PACKAGES.core} target="_blank" rel="noreferrer">
+          @stacks-passkey/core
+        </a>{' '}
+        on npm — no separate install.
+      </p>
       <CodeBlock>{`npx spk init                              # create passkey.manifest.json
 npx spk ensure ST...my-app                # register app via relay catalog
 
