@@ -26,7 +26,7 @@ function loadConfig(): RelayConfig {
     gasTankPath: process.env.GAS_TANK_PATH ?? defaultStorePath(),
     policy: {
       allowedContracts: process.env.ALLOWED_CONTRACTS?.split(',').filter(Boolean),
-      maxFeeMicroStx: BigInt(process.env.MAX_FEE_MICRO_STX ?? '50000'),
+      maxFeeMicroStx: BigInt(process.env.MAX_FEE_MICRO_STX ?? '100000'),
       rateLimit: {
         windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? '60000'),
         maxRequests: Number(process.env.RATE_LIMIT_MAX ?? '30'),
