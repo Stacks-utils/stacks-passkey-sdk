@@ -19,20 +19,32 @@ type ContractInteraction = {
   feeMode: FeeMode;
 };
 
+type InteractionStore = Record<string, ContractInteraction[]>;
+
 const INTERACTIONS_KEY = 'passkey-demo-interactions';
 const TERMINAL_TX_STATUSES = new Set(['success', 'abort_by_response', 'failed']);
 
-function loadStoredInteractions(): ContractInteraction[] {
+function loadInteractionStore(): InteractionStore {
   try {
     const raw = sessionStorage.getItem(INTERACTIONS_KEY);
-    return raw ? (JSON.parse(raw) as ContractInteraction[]) : [];
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as InteractionStore | ContractInteraction[];
+    if (Array.isArray(parsed)) return {};
+    return parsed;
   } catch {
-    return [];
+    return {};
   }
 }
 
-function storeInteractions(items: ContractInteraction[]) {
-  sessionStorage.setItem(INTERACTIONS_KEY, JSON.stringify(items));
+function loadStoredInteractions(contractId: string | null): ContractInteraction[] {
+  if (!contractId) return [];
+  return loadInteractionStore()[contractId] ?? [];
+}
+
+function storeInteractions(contractId: string, items: ContractInteraction[]) {
+  const store = loadInteractionStore();
+  store[contractId] = items;
+  sessionStorage.setItem(INTERACTIONS_KEY, JSON.stringify(store));
 }
 
 function isTerminalTxStatus(status?: string): boolean {
@@ -102,7 +114,7 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
     gasTankAddress,
   } = usePasskeyAccount();
 
-  const [interactions, setInteractions] = useState<ContractInteraction[]>(() => loadStoredInteractions());
+  const [interactions, setInteractions] = useState<ContractInteraction[]>([]);
   const [contractBalance, setContractBalance] = useState<string | null>(null);
   const [demoScore, setDemoScore] = useState<string | null>(null);
   const [demoScoreError, setDemoScoreError] = useState<string | null>(null);
@@ -113,6 +125,10 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
   const originAddress = session?.originAddress ?? '';
   const smartAccountId =
     session?.contractId ?? (originAddress ? `${originAddress}.smart-account` : null);
+
+  useEffect(() => {
+    setInteractions(smartAccountId ? loadStoredInteractions(smartAccountId) : []);
+  }, [smartAccountId]);
 
   const fetchContractBalance = useCallback(async () => {
     if (!smartAccountId) return;
@@ -144,10 +160,10 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
   const updateInteractionStatus = useCallback((txid: string, status: string) => {
     setInteractions((prev) => {
       const next = prev.map((item) => (item.txid === txid ? { ...item, status } : item));
-      storeInteractions(next);
+      if (smartAccountId) storeInteractions(smartAccountId, next);
       return next;
     });
-  }, []);
+  }, [smartAccountId]);
 
   const startPollingTx = useCallback(
     (txid: string) => {
@@ -172,13 +188,18 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
   useEffect(() => {
     const hasPendingInvoke = interactions.some(
       (item) =>
-        item.functionName === 'execute-via-adapter' &&
+        (item.functionName === 'execute-via-adapter' ||
+          item.functionName === 'execute-via-adapter-with-fee') &&
         item.status !== 'success' &&
         item.status !== 'abort_by_response' &&
         item.status !== 'failed' &&
         item.status !== 'not found'
     );
-    const latestInvoke = interactions.find((item) => item.functionName === 'execute-via-adapter');
+    const latestInvoke = interactions.find(
+      (item) =>
+        item.functionName === 'execute-via-adapter' ||
+        item.functionName === 'execute-via-adapter-with-fee'
+    );
     if (!hasPendingInvoke && latestInvoke?.status === 'success') {
       void refreshDemoScore();
     }
@@ -192,13 +213,15 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
     }
   }, [interactions, startPollingTx]);
 
-  const addInteraction = (label: string, functionName: string, txid: string) => {
+  const addInteraction = (label: string, functionName: string, txid: string, contractId?: string) => {
+    const accountId = contractId ?? smartAccountId;
+    if (!accountId) return;
     setInteractions((prev) => {
       const next = [
         { label, functionName, txid, at: new Date().toLocaleString(), feeMode, status: 'pending' },
         ...prev,
       ];
-      storeInteractions(next);
+      storeInteractions(accountId, next);
       return next;
     });
     startPollingTx(txid);
@@ -207,7 +230,7 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
   const handleRegister = async () => {
     const credential = await register(crypto.randomUUID(), 'Demo User');
     if (credential.txid !== 'already-registered') {
-      addInteraction('Sign up with passkey', 'register', credential.txid);
+      addInteraction('Sign up with passkey', 'register', credential.txid, credential.contractId);
     }
   };
 
@@ -222,7 +245,11 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
         arg0: score,
         arg2: originAddress,
       });
-      addInteraction(`Invoke demo app (set-score = ${score.toString()})`, 'execute-via-adapter', txid);
+      addInteraction(
+        `Invoke demo app (set-score = ${score.toString()})`,
+        feeMode === 'account-pay' ? 'execute-via-adapter-with-fee' : 'execute-via-adapter',
+        txid
+      );
     } catch {
       // surfaced via usePasskeyAccount().error
     }
@@ -295,6 +322,14 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
         </div>
       )}
 
+      {feeMode === 'account-pay' && (
+        <div className="alert alert-info">
+          Account pay: the relay co-signs the outer transaction; your smart account reimburses a fixed fee
+          (matching relay <code>MAX_FEE_MICRO_STX</code>, typically ~0.1 STX) to the project gas tank on each
+          transfer or invoke. Fund the smart account contract first.
+        </div>
+      )}
+
       <div className="demo-grid">
         <div className="demo-main">
           <div className="account-card">
@@ -328,7 +363,10 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
               )}
             </div>
             {needsFunding && (
-              <div className="alert alert-warning">Fund {smartAccountId} on testnet for STX transfers.</div>
+              <div className="alert alert-warning">
+                Fund {smartAccountId} on testnet
+                {feeMode === 'account-pay' ? ' for account-pay fees and transfers' : ' for STX transfers'}.
+              </div>
             )}
           </div>
 
@@ -393,6 +431,11 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
           {interactions.length > 0 && (
             <div className="activity-mini">
               <h3>Session activity</h3>
+              {smartAccountId && (
+                <p className="activity-mini-account">
+                  <code>{smartAccountId}</code>
+                </p>
+              )}
               <ul>
                 {interactions.slice(0, 5).map((item) => (
                   <li key={`${item.txid}-${item.at}`}>
