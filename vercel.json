@@ -2,5 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
   "buildCommand": "npm run build -w @stacks-passkey/core && npm run build -w @stacks-passkey/react && npm run build -w stacks-passkey-demo",
-  "outputDirectory": "examples/demo/dist"
+  "outputDirectory": "examples/demo/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
