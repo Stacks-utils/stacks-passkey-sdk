@@ -1,5 +1,9 @@
 export type ExplorerNetwork = 'testnet' | 'mainnet';
 
+export function explorerNetwork(network?: string): ExplorerNetwork {
+  return network === 'mainnet' ? 'mainnet' : 'testnet';
+}
+
 export function txExplorerUrl(txid: string, network: ExplorerNetwork = 'testnet'): string {
   const id = txid.startsWith('0x') ? txid.slice(2) : txid;
   return `https://explorer.hiro.so/txid/${id}?chain=${network}`;
