@@ -40,6 +40,13 @@ describe('GasTankStore', () => {
     expect(resolved?.sponsorPrivateKey.endsWith('01')).toBe(true);
   });
 
+  it('reveals API keys in non-production dev mode', () => {
+    const wallet = store.ensureWallet(OWNER);
+    const { apiKey, record } = store.createApiKey(wallet.id, 'Reveal me');
+    expect(store.canRevealApiKey(wallet.id, record.id)).toBe(true);
+    expect(store.revealApiKey(wallet.id, record.id)).toBe(apiKey);
+  });
+
   it('revokes API keys', () => {
     const wallet = store.ensureWallet(OWNER);
     const { apiKey, record } = store.createApiKey(wallet.id, 'Temp');
