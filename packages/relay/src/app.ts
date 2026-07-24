@@ -15,6 +15,7 @@ import {
   verifyAuthSignatureWithReason,
 } from './wallet-auth.js';
 import { fetchStxBalanceMicro } from './on-chain-balance.js';
+import { createCorsOriginMatcher } from './cors-origins.js';
 
 function resolveSessionAddress(c: { req: { header: (name: string) => string | undefined } }, config: RelayConfig): string | null {
   const auth = c.req.header('Authorization');
@@ -40,7 +41,7 @@ export function createRelayApp(config: RelayConfig, gasTank?: GasTankStore) {
   app.use(
     '*',
     cors({
-      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'],
+      origin: createCorsOriginMatcher(),
       allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key'],
     })
