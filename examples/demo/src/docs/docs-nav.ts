@@ -7,6 +7,7 @@ import {
   ConfigSection,
   EnvSection,
   FeeModesSection,
+  GettingStartedSection,
   InstallSection,
   InvokeSection,
   OverviewSection,
@@ -27,29 +28,34 @@ export type DocPageDef = {
   label: string;
   title: string;
   Section: ComponentType;
+  group?: string;
 };
 
 export const DOC_PAGES: DocPageDef[] = [
-  { slug: 'playground', label: 'Playground', title: 'Playground', Section: PlaygroundSection },
-  { slug: 'overview', label: 'Overview', title: 'Overview', Section: OverviewSection },
-  { slug: 'install', label: 'Installation', title: 'Installation', Section: InstallSection },
-  { slug: 'quickstart', label: 'Quick start (React)', title: 'Quick start (React)', Section: QuickstartSection },
-  { slug: 'config', label: 'PasskeyClient config', title: 'PasskeyClient configuration', Section: ConfigSection },
-  { slug: 'smart-account', label: 'Smart account', title: 'Smart account', Section: AccountModesSection },
-  { slug: 'signup', label: 'Sign-up & sign-in', title: 'Sign-up & sign-in', Section: SignupSection },
-  { slug: 'self-deploy', label: 'Self-deploy smart account', title: 'Self-deploy smart account', Section: SelfDeploySection },
-  { slug: 'fee-modes', label: 'Fee modes', title: 'Fee modes', Section: FeeModesSection },
-  { slug: 'transfers', label: 'Transfers', title: 'Transfers', Section: TransfersSection },
-  { slug: 'invoke', label: 'Invoke app contracts', title: 'Invoke app contracts', Section: InvokeSection },
-  { slug: 'app-contract', label: 'Your Clarity app', title: 'Your Clarity app contract', Section: AppContractSection },
-  { slug: 'relay', label: 'Relay setup', title: 'Relay setup', Section: RelaySection },
-  { slug: 'relay-api', label: 'Relay API', title: 'Relay API', Section: RelayApiSection },
-  { slug: 'react-hooks', label: 'React hooks', title: 'React hooks', Section: ReactHooksSection },
-  { slug: 'advanced', label: 'Advanced APIs', title: 'Advanced APIs', Section: AdvancedSection },
-  { slug: 'cli', label: 'spk CLI', title: 'spk CLI', Section: CliSection },
-  { slug: 'env', label: 'Environment variables', title: 'Environment variables', Section: EnvSection },
-  { slug: 'security', label: 'Security', title: 'Security', Section: SecuritySection },
-  { slug: 'troubleshooting', label: 'Troubleshooting', title: 'Troubleshooting', Section: TroubleshootingSection },
+  { slug: 'getting-started', label: 'Getting started', title: 'Getting started', Section: GettingStartedSection, group: 'Start here' },
+  { slug: 'playground', label: 'Live playground', title: 'Live playground', Section: PlaygroundSection, group: 'Start here' },
+  { slug: 'overview', label: 'What & why', title: 'What & why', Section: OverviewSection, group: 'Start here' },
+
+  { slug: 'install', label: '1. Install', title: 'Install packages', Section: InstallSection, group: 'Integration guide' },
+  { slug: 'quickstart', label: '2. Wire up React', title: 'Wire up React', Section: QuickstartSection, group: 'Integration guide' },
+  { slug: 'signup', label: '3. Sign-up & sign-in', title: 'Sign-up & sign-in', Section: SignupSection, group: 'Integration guide' },
+  { slug: 'transfers', label: '4. Transfer STX', title: 'Transfer STX', Section: TransfersSection, group: 'Integration guide' },
+  { slug: 'invoke', label: '5. Invoke your app', title: 'Invoke your app contract', Section: InvokeSection, group: 'Integration guide' },
+  { slug: 'fee-modes', label: '6. Fee modes', title: 'Fee modes', Section: FeeModesSection, group: 'Integration guide' },
+
+  { slug: 'config', label: 'PasskeyClient config', title: 'PasskeyClient configuration', Section: ConfigSection, group: 'Reference' },
+  { slug: 'smart-account', label: 'Smart account model', title: 'Smart account model', Section: AccountModesSection, group: 'Reference' },
+  { slug: 'self-deploy', label: 'Self-deploy flow', title: 'Self-deploy flow', Section: SelfDeploySection, group: 'Reference' },
+  { slug: 'app-contract', label: 'Your Clarity app', title: 'Your Clarity app contract', Section: AppContractSection, group: 'Reference' },
+  { slug: 'react-hooks', label: 'React hooks', title: 'React hooks', Section: ReactHooksSection, group: 'Reference' },
+  { slug: 'relay-api', label: 'Relay API', title: 'Relay API', Section: RelayApiSection, group: 'Reference' },
+  { slug: 'advanced', label: 'Advanced APIs', title: 'Advanced APIs', Section: AdvancedSection, group: 'Reference' },
+
+  { slug: 'relay', label: 'Run your own relay', title: 'Relay setup', Section: RelaySection, group: 'Operations' },
+  { slug: 'cli', label: 'spk CLI', title: 'spk CLI', Section: CliSection, group: 'Operations' },
+  { slug: 'env', label: 'Environment variables', title: 'Environment variables', Section: EnvSection, group: 'Operations' },
+  { slug: 'security', label: 'Security', title: 'Security', Section: SecuritySection, group: 'Operations' },
+  { slug: 'troubleshooting', label: 'Troubleshooting', title: 'Troubleshooting', Section: TroubleshootingSection, group: 'Operations' },
 ];
 
 export const DOC_PAGES_BY_SLUG = Object.fromEntries(DOC_PAGES.map((page) => [page.slug, page])) as Record<
@@ -57,4 +63,10 @@ export const DOC_PAGES_BY_SLUG = Object.fromEntries(DOC_PAGES.map((page) => [pag
   DocPageDef
 >;
 
-export const DEFAULT_DOC_SLUG = DOC_PAGES[0].slug;
+export const DEFAULT_DOC_SLUG = 'getting-started';
+
+export const DOC_NAV_GROUPS = [...new Set(DOC_PAGES.map((p) => p.group).filter(Boolean))] as string[];
+
+export function docPagesInGroup(group: string): DocPageDef[] {
+  return DOC_PAGES.filter((p) => p.group === group);
+}
