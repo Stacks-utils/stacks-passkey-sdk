@@ -18,7 +18,8 @@ describe('AccountService', () => {
     writeFileSync(
       clarPath,
       `(use-trait exec-trait .passkey-adapter.passkey-exec-trait)
-(contract-call? .passkey-adapter forward-invoke target)
+(contract-call? .passkey-adapter forward-invoke target-a)
+(contract-call? .passkey-adapter forward-invoke target-b)
 `
     );
     process.env.PASSKEY_ACCOUNT_CONTRACT_PATH = clarPath;
