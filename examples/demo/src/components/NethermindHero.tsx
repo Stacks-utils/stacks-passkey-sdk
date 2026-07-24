@@ -13,6 +13,7 @@ type HeroContent = {
   subheadline: string;
   primaryCta: string;
   secondaryCta: string;
+  secondaryCtaHref: string;
   trustItems: readonly string[];
   promoCard: HeroPromoCard;
 };
@@ -34,9 +35,14 @@ export function NethermindHero({ content }: { content: HeroContent }) {
             <Link to="/demo" className="btn btn-hero-primary btn-lg">
               {content.primaryCta}
             </Link>
-            <Link to="/docs/getting-started" className="btn btn-hero-ghost btn-lg">
+            <a
+              href={content.secondaryCtaHref}
+              className="btn btn-hero-ghost btn-lg"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {content.secondaryCta}
-            </Link>
+            </a>
           </div>
           <ul className="hero-nethermind-trust">
             {content.trustItems.map((item) => (

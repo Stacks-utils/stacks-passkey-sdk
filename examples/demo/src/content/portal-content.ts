@@ -85,7 +85,8 @@ export const LANDING_HERO = {
   subheadline:
     'Empower your dApp with wallet-less onboarding — biometric sign-in, self-deployed accounts, gasless transactions, and adapter-based contract calls.',
   primaryCta: 'Explore the playground',
-  secondaryCta: 'Read integration guide',
+  secondaryCta: 'Watch demo video',
+  secondaryCtaHref: 'https://screen.studio/share/SKH9qyds',
   trustItems: ['No seed phrase', 'WebAuthn on device', 'Relay-sponsored gas'],
 } as const;
 
