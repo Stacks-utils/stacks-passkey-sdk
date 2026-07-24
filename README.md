@@ -2,9 +2,17 @@
 
 Wallet-less, seedless onboarding for Stacks — biometric smart accounts with gasless transactions via Clarity 5 **secp256r1** passkeys.
 
+[![npm core](https://img.shields.io/npm/v/@stacks-passkey/core?label=core)](https://www.npmjs.com/package/@stacks-passkey/core)
+[![npm react](https://img.shields.io/npm/v/@stacks-passkey/react?label=react)](https://www.npmjs.com/package/@stacks-passkey/react)
+[![npm relay](https://img.shields.io/npm/v/@stacks-passkey/relay?label=relay)](https://www.npmjs.com/package/@stacks-passkey/relay)
+
 ```bash
 npm install @stacks-passkey/core @stacks-passkey/react @stacks/network
 ```
+
+**Published on npm** (v0.1.0): [`@stacks-passkey/core`](https://www.npmjs.com/package/@stacks-passkey/core) · [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react) · [`@stacks-passkey/relay`](https://www.npmjs.com/package/@stacks-passkey/relay) (self-hosted relay server)
+
+**Hosted testnet relay:** `https://stacks-passkey-relay.onrender.com` — create an API key in the [dev portal](examples/demo/) (`/portal`) or use your own relay.
 
 **Start here:**
 
@@ -145,11 +153,11 @@ Example app contracts live under `examples/demo/`, not `contracts/`, so protocol
 
 ## Packages
 
-| Package | npm name | Description |
-|---------|----------|-------------|
-| Core SDK | `@stacks-passkey/core` | WebAuthn client, self-deploy, actions, relay client, **`spk` CLI** |
-| React | `@stacks-passkey/react` | `PasskeyProvider`, `usePasskeyAccount` |
-| Relay | `@stacks-passkey/relay` | Self-hostable sponsor + catalog + factory registry |
+| Package | npm | Description |
+|---------|-----|-------------|
+| Core SDK | [`@stacks-passkey/core`](https://www.npmjs.com/package/@stacks-passkey/core) | WebAuthn client, self-deploy, actions, relay client, **`spk` CLI** |
+| React | [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react) | `PasskeyProvider`, `usePasskeyAccount` |
+| Relay | [`@stacks-passkey/relay`](https://www.npmjs.com/package/@stacks-passkey/relay) | Self-hostable sponsor + catalog + factory registry |
 
 ### spk CLI (bundled with core)
 
@@ -184,13 +192,17 @@ import { STACKS_TESTNET } from '@stacks/network';
 
 const client = new PasskeyClient({
   network: STACKS_TESTNET,
-  relayUrl: 'http://localhost:8787',
+  relayUrl: 'https://stacks-passkey-relay.onrender.com',
   relayApiKey: 'spk_...',
   deployerAddress: 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ',
   rpId: 'localhost',
   rpName: 'My App',
   origin: 'http://localhost:3000',
-  fee: { mode: 'gasless', relayUrl: 'http://localhost:8787', relayApiKey: 'spk_...' },
+  fee: {
+    mode: 'gasless',
+    relayUrl: 'https://stacks-passkey-relay.onrender.com',
+    relayApiKey: 'spk_...',
+  },
 });
 
 await client.register(crypto.randomUUID(), 'Alice');
@@ -236,10 +248,12 @@ npm run test          # contracts + core + relay + e2e
 **Demo env** (`examples/demo/.env`):
 
 ```env
-VITE_RELAY_URL=http://localhost:8787
-VITE_RELAY_API_KEY=spk_...          # from relay bootstrap log or relay-admin
+VITE_RELAY_URL=https://stacks-passkey-relay.onrender.com
+VITE_RELAY_API_KEY=spk_...          # create at /portal on the hosted relay
 VITE_DEPLOYER_ADDRESS=ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ
 ```
+
+Use `VITE_RELAY_URL=http://localhost:8787` only when running `npm run dev:relay` locally.
 
 **Relay env** (minimum for self-deploy):
 
