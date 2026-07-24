@@ -2,6 +2,16 @@ import testnet from '../../../config/testnet.json';
 
 const deployer = testnet.deployer;
 
+/** Current SDK version published on npm. */
+export const SDK_VERSION = '0.1.0';
+
+/** npm package pages (published under @stacks-passkey scope). */
+export const NPM_PACKAGES = {
+  core: 'https://www.npmjs.com/package/@stacks-passkey/core',
+  react: 'https://www.npmjs.com/package/@stacks-passkey/react',
+  relay: 'https://www.npmjs.com/package/@stacks-passkey/relay',
+} as const;
+
 /** Public testnet relay hosted on Render (default for portal demo + docs). */
 export const HOSTED_RELAY_URL = 'https://stacks-passkey-relay.onrender.com';
 
