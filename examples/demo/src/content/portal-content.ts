@@ -14,8 +14,8 @@ export const PORTAL_TOOLS = [
     accent: 'var(--forge-accent)',
   },
   {
-    to: '/admin',
-    title: 'Relay admin',
+    to: '/portal',
+    title: 'Dev portal',
     desc: 'Create API keys, fund gas tanks, and review sponsored transaction logs.',
     badge: 'Operations',
     accent: 'var(--text)',
@@ -79,6 +79,76 @@ export const HOW_IT_WORKS = [
     desc: 'Signed actions hit execute-via-adapter on the smart account; passkey-adapter forwards to your passkey-exec contract.',
   },
 ] as const;
+
+export const LANDING_HERO = {
+  headline: 'The passkey layer for Stacks smart accounts',
+  subheadline:
+    'Empower your dApp with wallet-less onboarding — biometric sign-in, self-deployed accounts, gasless transactions, and adapter-based contract calls.',
+  primaryCta: 'Explore the playground',
+  secondaryCta: 'Read integration guide',
+  trustItems: ['No seed phrase', 'WebAuthn on device', 'Relay-sponsored gas'],
+} as const;
+
+export const LANDING_HERO_CARD = {
+  badge: 'Testnet live',
+  title: 'Interactive SDK playground',
+  description: 'Sign up with a passkey, deploy a smart account, invoke passkey-demo-app, and inspect real transactions.',
+  linkTo: '/demo',
+  linkLabel: 'Open playground',
+} as const;
+
+export const LANDING_STATS = [
+  { value: '0', suffix: ' seed words', label: 'Users never manage a recovery phrase' },
+  { value: '1', suffix: ' passkey sign', label: 'Authorizes each on-chain action via WebAuthn' },
+  { value: '100%', suffix: '', label: 'SDK coverage for sign-up, transfer, and invoke' },
+] as const;
+
+export const LANDING_STICKY_FEATURES = [
+  {
+    title: 'Passkey sign-up & session restore',
+    description:
+      'register() creates a WebAuthn credential, derives an origin key, and self-deploys STorigin.smart-account. signIn() restores the session from browser storage — no wallet popup.',
+    visualKey: 'passkey',
+  },
+  {
+    title: 'Gasless & account-pay fee modes',
+    description:
+      'Gasless mode bills your project gas tank through the relay. Account-pay reimburses a fixed fee from the smart account STX balance — users stay wallet-less while you control economics.',
+    visualKey: 'fees',
+  },
+  {
+    title: 'invoke() through passkey-adapter',
+    description:
+      'Call any registered app contract with invoke(contract, fn, args). The SDK computes action hashes, collects a passkey signature, and routes execute-via-adapter on-chain.',
+    visualKey: 'invoke',
+  },
+  {
+    title: 'Dev portal & API keys',
+    description:
+      'Fund gas tanks, create spk_ API keys, and audit sponsored transactions from the relay dashboard — scoped per wallet on testnet.',
+    visualKey: 'relay',
+  },
+] as const;
+
+export const TRUST_LOGOS = ['Stacks', 'Bitcoin L2', 'Clarity 5', 'WebAuthn', 'Hiro', 'Passkey Adapter', 'Smart Accounts'] as const;
+
+export const USE_CASE_PILLS = [
+  'Consumer dApps',
+  'Gaming',
+  'DeFi onboarding',
+  'NFT minting',
+  'Social apps',
+  'Enterprise pilots',
+  'Hackathons',
+  'Mobile-first',
+] as const;
+
+export const LANDING_TESTIMONIAL = {
+  quote:
+    'Passkey accounts finally make Stacks feel like a modern consumer product — sign up with Face ID, invoke your contract, done. No extension, no twelve words.',
+  author: 'SDK integrator',
+  role: 'Reference architecture · testnet portal',
+} as const;
 
 export const DEMO_COPY = {
   rpName: 'Stacks Passkey Demo',
