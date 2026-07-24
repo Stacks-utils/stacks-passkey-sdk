@@ -4,7 +4,7 @@ import { ArchitectureDiagram } from '../components/ArchitectureDiagram.js';
 import { MobileMenuButton } from '../components/MobileMenuButton.js';
 import { ScrollReveal } from '../components/ScrollReveal.js';
 import { useEscapeKey, useScrollLock } from '../hooks/useScrollLock.js';
-import { HOSTED_RELAY_URL } from '../config.js';
+import { HOSTED_RELAY_URL, NPM_PACKAGES, SDK_VERSION } from '../config.js';
 import { DOC_NAV_GROUPS, DOC_PAGES_BY_SLUG, DEFAULT_DOC_SLUG, docPagesInGroup } from './docs-nav.js';
 
 function DocsTocNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -48,7 +48,11 @@ export function DocsLayout() {
           <h1>Integrate passkey smart accounts</h1>
           <p className="portal-lead">
             Step-by-step guides for install, React wiring, sign-up, transfers, invokes, fee modes, and relay operations.
-            The portal demo uses the hosted testnet relay at <code>{HOSTED_RELAY_URL}</code>.
+            SDK packages are on npm at v{SDK_VERSION} (
+            <a href={NPM_PACKAGES.core} target="_blank" rel="noreferrer">
+              @stacks-passkey/core
+            </a>
+            ). The portal demo uses the hosted testnet relay at <code>{HOSTED_RELAY_URL}</code>.
           </p>
           <Link to="/demo" className="btn btn-primary btn-sm">
             Try live demo
