@@ -48,9 +48,9 @@ export function NethermindHero({ content }: { content: HeroContent }) {
         <aside className="hero-promo-card">
           <div className="hero-promo-card-visual" aria-hidden>
             <div className="hero-promo-code">
+              <span>npm i @stacks-passkey/core</span>
               <span>register()</span>
               <span>invoke(app, fn)</span>
-              <span>transfer(to, amt)</span>
             </div>
           </div>
           <div className="hero-promo-card-body">
