@@ -2,7 +2,7 @@
 
 Complete documentation for integrating wallet-less passkey smart accounts into your Stacks project.
 
-**Packages:** `@stacks-passkey/core` · `@stacks-passkey/react` · `@stacks-passkey/relay`
+**Packages:** [`@stacks-passkey/core`](https://www.npmjs.com/package/@stacks-passkey/core) · [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react) · [`@stacks-passkey/relay`](https://www.npmjs.com/package/@stacks-passkey/relay) — **v0.1.0 on npm**
 
 > **New to this SDK?**
 > - **Frontend only** (no relay/contracts to host): **[GUIDE.md](./GUIDE.md)**
@@ -252,6 +252,8 @@ Store the returned `apiKey` securely. Each gasless sponsorship debits up to `MAX
 
 ## Step 4 — Install the SDK
 
+From npm (no repo clone required):
+
 ```bash
 npm install @stacks-passkey/core @stacks/network
 ```
@@ -260,6 +262,12 @@ For React apps:
 
 ```bash
 npm install @stacks-passkey/react
+```
+
+To self-host the relay server:
+
+```bash
+npm install @stacks-passkey/relay
 ```
 
 Peer dependencies are bundled via `@stacks/transactions` and `@stacks/common` (pulled in automatically).
@@ -287,14 +295,14 @@ export const passkeyClient = new PasskeyClient({
   rpName: 'My Stacks App',
   origin: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
 
-  // Relay
-  relayUrl: 'http://localhost:8787',
+  // Relay — hosted testnet default; use http://localhost:8787 for local relay
+  relayUrl: 'https://stacks-passkey-relay.onrender.com',
   relayApiKey: 'spk_your_project_key_here',
 
   // Fee configuration
   fee: {
     mode: 'gasless',
-    relayUrl: 'http://localhost:8787',
+    relayUrl: 'https://stacks-passkey-relay.onrender.com',
     relayApiKey: 'spk_your_project_key_here',
   },
 });
