@@ -98,6 +98,14 @@ interface LegacyStoreData {
 /** @deprecated alias — GasTankStore is now wallet-scoped relay storage */
 export type ProjectRecord = WalletRecord & { name?: string; apiKey?: string; gasTankAddress: string; gasBalanceMicroStx: bigint };
 
+/** Local dev: keep plaintext so wallet owners can reveal keys in admin UI. */
+export function devStoreApiKeys(): boolean {
+  const flag = process.env.RELAY_DEV_STORE_API_KEYS?.trim().toLowerCase();
+  if (flag === 'true' || flag === '1') return true;
+  if (flag === 'false' || flag === '0') return false;
+  return process.env.NODE_ENV !== 'production';
+}
+
 export class GasTankStore {
   private readonly filePath: string;
   private data: StoreDataV2;
@@ -245,10 +253,24 @@ export class GasTankStore {
       keyHash: hashApiKey(apiKey),
       keyPrefix: apiKeyPrefix(apiKey),
       createdAt: new Date().toISOString(),
+      ...(devStoreApiKeys() ? { legacyPlaintext: apiKey } : {}),
     };
     this.data.apiKeys.push(record);
     this.persist();
     return { apiKey, record: this.toApiKey(record) };
+  }
+
+  canRevealApiKey(walletId: string, keyId: string): boolean {
+    const row = this.data.apiKeys.find((k) => k.id === keyId && k.walletId === walletId && !k.revokedAt);
+    return Boolean(row?.legacyPlaintext);
+  }
+
+  revealApiKey(walletId: string, keyId: string): string {
+    const row = this.data.apiKeys.find((k) => k.id === keyId && k.walletId === walletId && !k.revokedAt);
+    if (!row?.legacyPlaintext) {
+      throw new Error('API key not retrievable — create a new key or use a copy saved at creation time');
+    }
+    return row.legacyPlaintext;
   }
 
   revokeApiKey(walletId: string, keyId: string): ApiKeyRecord {
