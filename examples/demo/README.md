@@ -2,6 +2,18 @@
 
 Unified web portal at **http://localhost:3000** — demo, developer docs, and dev portal in one app.
 
+## SDK on npm
+
+Install the published packages in your own app (v0.1.0):
+
+```bash
+npm install @stacks-passkey/core @stacks-passkey/react @stacks/network
+```
+
+- [@stacks-passkey/core](https://www.npmjs.com/package/@stacks-passkey/core)
+- [@stacks-passkey/react](https://www.npmjs.com/package/@stacks-passkey/react)
+- [@stacks-passkey/relay](https://www.npmjs.com/package/@stacks-passkey/relay) (self-hosted relay)
+
 ## Routes
 
 | Path | Purpose |
