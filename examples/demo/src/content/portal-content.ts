@@ -90,7 +90,7 @@ export const LANDING_HERO = {
 } as const;
 
 export const LANDING_HERO_CARD = {
-  badge: 'Testnet live',
+  badge: 'npm v0.1.0',
   title: 'Interactive SDK playground',
   description: 'Sign up with a passkey, deploy a smart account, invoke passkey-demo-app, and inspect real transactions.',
   linkTo: '/demo',
