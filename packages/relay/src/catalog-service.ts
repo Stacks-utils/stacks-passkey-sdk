@@ -12,6 +12,7 @@ import type { GasTankStore } from './gas-tank.js';
 import { broadcastWithNonceRetry, runWithDeployerLock } from './registrar-queue.js';
 import { runWithSponsorLock } from './sponsor-lock.js';
 import { fetchStxBalanceMicro } from './on-chain-balance.js';
+import { platformRegistrarAddress, platformRegistrarPrivateKey } from './registrar.js';
 
 const REGISTRATION_FEE_MULTIPLIER = 3n;
 
@@ -167,8 +168,8 @@ export class CatalogService {
       creds = sponsor;
     }
 
-    const senderKey = creds?.sponsorPrivateKey ?? this.config.registrarPrivateKey ?? this.config.sponsorPrivateKey;
-    const lockAddress = creds?.sponsorAddress;
+    const senderKey = platformRegistrarPrivateKey(this.config);
+    const lockAddress = platformRegistrarAddress(this.config);
 
     const submit = async (): Promise<string> => {
       let reserved = fee;
@@ -207,7 +208,7 @@ export class CatalogService {
       }
     };
 
-    if (lockAddress) {
+    if (this.gasTank) {
       return runWithSponsorLock(lockAddress, submit);
     }
     return submit();
