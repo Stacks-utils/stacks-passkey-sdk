@@ -10,6 +10,7 @@ import { bufferToHex } from './crypto.js';
 import { normalizeTxId } from './broadcast.js';
 import { isBadNonceError, withNonceRetry } from './nonce.js';
 import type { FeeMode } from './types.js';
+import { DEFAULT_MAX_FEE_MICRO_STX } from './types.js';
 
 export type { FeeMode };
 
@@ -20,6 +21,8 @@ export interface GaslessFeeOptions {
 export interface AccountPayFeeOptions {
   relay: RelayClient;
   feeRecipient: string;
+  /** On-chain reimbursement pulled from the smart account (µSTX). */
+  feeAmountMicroStx: bigint;
 }
 
 export interface FeeOptions {
@@ -69,17 +72,17 @@ export async function broadcastContractCall(
     if (!fee.accountPay?.relay) {
       throw new Error('account-pay mode requires fee.accountPay.relay');
     }
-    const estimatedFee = await estimateRelayFeeMicroStx(txOptions, txOptions.network);
-    const maxFee = fee.maxFeeMicroStx ?? 100_000n;
-    if (estimatedFee > maxFee) {
-      throw new Error(`Estimated fee ${estimatedFee} exceeds max ${maxFee}`);
+    const feeAmount = fee.accountPay.feeAmountMicroStx;
+    const maxFee = fee.maxFeeMicroStx ?? DEFAULT_MAX_FEE_MICRO_STX;
+    if (feeAmount > maxFee) {
+      throw new Error(`Account-pay fee ${feeAmount} exceeds max ${maxFee}`);
     }
     return withNonceRetry(async () => {
       const tx = await buildOriginSignedSponsoredTx(txOptions);
       const txHex = `0x${bufferToHex(tx.serializeBytes())}`;
       const sponsored = await fee.accountPay!.relay.sponsorTransaction(txHex, {
         billingMode: 'account-pay',
-        estimatedFeeMicroStx: maxFee.toString(),
+        estimatedFeeMicroStx: feeAmount.toString(),
       });
       return normalizeTxId(sponsored.txid);
     });
@@ -95,6 +98,14 @@ export async function estimateRelayFeeMicroStx(
   const tx = await buildOriginSignedSponsoredTx({ ...txOptions, network });
   const estimate = await fetchFeeEstimate({ transaction: tx, network });
   return BigInt(estimate);
+}
+
+/** Fixed µSTX reimbursement for account-pay (matches relay sponsor fee, not fetchFeeEstimate). */
+export function resolveAccountPayFeeMicroStx(options: {
+  maxFeeMicroStx?: bigint;
+  relaySponsorFeeMicroStx?: bigint;
+}): bigint {
+  return options.maxFeeMicroStx ?? options.relaySponsorFeeMicroStx ?? DEFAULT_MAX_FEE_MICRO_STX;
 }
 
 export { isBadNonceError, withNonceRetry };
