@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addressExplorerUrl,
+  cacheApiKey,
+  getCachedApiKey,
   microStxToStx,
+  removeCachedApiKey,
+  revealApiKey,
   truncateAddress,
   walletFetch,
   type ApiKeyCreated,
@@ -26,6 +30,58 @@ function CopyButton({ value }: { value: string }) {
     <button type="button" className="btn btn-secondary btn-sm" onClick={copy}>
       {copied ? 'Copied' : 'Copy'}
     </button>
+  );
+}
+
+function ApiKeyValue({ keyId, keyPrefix, retrievable }: { keyId: string; keyPrefix: string; retrievable?: boolean }) {
+  const [revealed, setRevealed] = useState<string | null>(() => getCachedApiKey(keyId));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const show = async () => {
+    setError(null);
+    const cached = getCachedApiKey(keyId);
+    if (cached) {
+      setRevealed(cached);
+      return;
+    }
+    if (!retrievable) {
+      setError('Not saved in this browser — revoke and create a new key to get a copy.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const apiKey = await revealApiKey(keyId);
+      setRevealed(apiKey);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not reveal key');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (revealed) {
+    return (
+      <div className="api-key-cell">
+        <code className="mono">{revealed}</code>
+        <CopyButton value={revealed} />
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRevealed(null)}>
+          Hide
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="api-key-cell">
+        <code className="mono">{keyPrefix}…</code>
+        <button type="button" className="btn btn-secondary btn-sm" disabled={loading} onClick={() => void show()}>
+          {loading ? 'Loading…' : 'Reveal'}
+        </button>
+      </div>
+      {error && <p className="connect-error" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>{error}</p>}
+    </div>
   );
 }
 
@@ -229,6 +285,7 @@ function Dashboard() {
         method: 'POST',
         body: JSON.stringify({ name: keyName }),
       });
+      cacheApiKey(created.id, created.apiKey);
       setNewKey(created.apiKey);
       await load();
       setTab('keys');
@@ -243,6 +300,7 @@ function Dashboard() {
     setError(null);
     try {
       await walletFetch(`/v1/wallet/keys/${id}`, { method: 'DELETE' });
+      removeCachedApiKey(id);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Revoke failed');
@@ -409,52 +467,86 @@ function Dashboard() {
             )}
 
             {tab === 'keys' && (
-              <div className="panel">
-                <div className="panel-header">
-                  <h2 className="panel-title">Your API keys</h2>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>
-                    Refresh
-                  </button>
-                </div>
-                {keys.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No API keys yet. Create one from the Overview tab after funding your gas tank.</p>
+              <>
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2 className="panel-title">Create API key</h2>
                   </div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="projects-table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Key prefix</th>
-                          <th>Created</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {keys.map((k) => (
-                          <tr key={k.id}>
-                            <td>{k.name}</td>
-                            <td>
-                              <code className="mono">{k.keyPrefix}…</code>
-                            </td>
-                            <td>{new Date(k.createdAt).toLocaleString()}</td>
-                            <td>
-                              <button type="button" className="btn btn-danger btn-sm" onClick={() => void revokeKey(k.id)}>
-                                Revoke
-                              </button>
-                            </td>
+                  <div className="panel-body">
+                    <div className="form-grid">
+                      <div className="form-field">
+                        <label htmlFor="keys-tab-key-name">Key name</label>
+                        <input
+                          id="keys-tab-key-name"
+                          value={keyName}
+                          onChange={(e) => setKeyName(e.target.value)}
+                          placeholder="Production app"
+                        />
+                      </div>
+                      <button type="button" className="btn btn-primary" disabled={creating} onClick={createKey}>
+                        {creating && <span className="spinner" />}
+                        Create API key
+                      </button>
+                    </div>
+                    {newKey && (
+                      <div className="alert alert-warning" style={{ marginTop: '1rem' }}>
+                        <strong>New API key — copy now:</strong>
+                        <div className="api-key-cell" style={{ marginTop: '0.5rem' }}>
+                          <code className="mono">{newKey}</code>
+                          <CopyButton value={newKey} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2 className="panel-title">Your API keys</h2>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>
+                      Refresh
+                    </button>
+                  </div>
+                  {keys.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No API keys yet. Create one above after funding your gas tank.</p>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="projects-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>API key</th>
+                            <th>Created</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {keys.map((k) => (
+                            <tr key={k.id}>
+                              <td>{k.name}</td>
+                              <td>
+                                <ApiKeyValue keyId={k.id} keyPrefix={k.keyPrefix} retrievable={k.retrievable} />
+                              </td>
+                              <td>{new Date(k.createdAt).toLocaleString()}</td>
+                              <td>
+                                <button type="button" className="btn btn-danger btn-sm" onClick={() => void revokeKey(k.id)}>
+                                  Revoke
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <div className="alert alert-info" style={{ margin: '1rem' }}>
+                    Click <strong>Reveal</strong> to show the full key (saved in this browser and on the relay in local
+                    dev). Production keys are show-once only — store them in your backend env, not in client bundles.
                   </div>
-                )}
-                <div className="alert alert-info" style={{ margin: '1rem' }}>
-                  Use keys in your app via <code>relayApiKey</code> on <code>PasskeyClient</code>. Never ship keys in
-                  public client bundles for production — proxy through your backend.
                 </div>
-              </div>
+              </>
             )}
 
             {tab === 'activity' && (
