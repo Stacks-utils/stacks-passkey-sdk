@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd ../.. && npm install",
+  "buildCommand": "cd ../.. && npm run build -w @stacks-passkey/core && npm run build -w @stacks-passkey/react && npm run build -w stacks-passkey-demo",
+  "outputDirectory": "dist"
+}

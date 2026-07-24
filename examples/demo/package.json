@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build -w @stacks-passkey/core && npm run build -w @stacks-passkey/react && vite build",
+    "build": "vite build",
+    "build:portal": "npm run build -w @stacks-passkey/core && npm run build -w @stacks-passkey/react && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
