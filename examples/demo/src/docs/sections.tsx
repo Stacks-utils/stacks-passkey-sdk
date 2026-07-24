@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { HOW_IT_WORKS, PLAYGROUND_FEATURES } from '../content/portal-content.js';
+import { HOSTED_RELAY_URL, LOCAL_RELAY_URL } from '../config.js';
 import { Callout, CodeBlock, DocLinkGrid, DocPage, FeatureGrid, StepGuide } from './components.js';
 
 const TESTNET_DEPLOYER = 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ';
@@ -42,7 +43,8 @@ export function GettingStartedSection() {
       <Callout title="What you need from your infra provider" variant="tip">
         <ul>
           <li>
-            <strong>Relay URL</strong> — e.g. <code>http://localhost:8787</code> (local) or your hosted relay
+            <strong>Relay URL</strong> — hosted testnet relay at{' '}
+            <code>{HOSTED_RELAY_URL}</code> (or <code>{LOCAL_RELAY_URL}</code> for local dev)
           </li>
           <li>
             <strong>API key</strong> — <code>spk_...</code> from the <Link to="/portal">dev portal</Link>
@@ -257,11 +259,12 @@ export function InstallSection() {
           },
           {
             title: 'Get relay credentials',
-            summary: 'Obtain relay URL + spk_ API key from your operator, or run the relay locally.',
+            summary: 'Use the hosted testnet relay or run your own locally.',
             detail: (
               <p>
-                Local dev: <code>npm run dev:relay</code> then create a key in{' '}
-                <Link to="/portal">dev portal</Link>.
+                Hosted relay: <code>{HOSTED_RELAY_URL}</code> — create an API key in the{' '}
+                <Link to="/portal">dev portal</Link>. Local dev: <code>npm run dev:relay</code> at{' '}
+                <code>{LOCAL_RELAY_URL}</code>.
               </p>
             ),
           },
@@ -280,7 +283,7 @@ export function QuickstartSection() {
   return (
     <DocPage title="Wire up React" lead="Step 2 — minimal PasskeyProvider setup.">
       <h3>1. Environment (.env)</h3>
-      <CodeBlock>{`VITE_RELAY_URL=http://localhost:8787
+      <CodeBlock>{`VITE_RELAY_URL=${HOSTED_RELAY_URL}
 VITE_RELAY_API_KEY=spk_your_project_key
 VITE_DEPLOYER_ADDRESS=${TESTNET_DEPLOYER}`}</CodeBlock>
 
@@ -750,6 +753,7 @@ MAX_FEE_MICRO_STX=100000
 SPONSOR_PRIVATE_KEY_FILE=./sponsor.key`}</CodeBlock>
       <p>
         Create project API keys in the <Link to="/portal">dev portal</Link>. Each project gets an isolated gas tank address.
+        The hosted testnet relay is at <code>{HOSTED_RELAY_URL}</code>.
       </p>
     </DocPage>
   );
@@ -931,7 +935,7 @@ export function CliSection() {
       <CodeBlock>{`npx spk init                              # create passkey.manifest.json
 npx spk ensure ST...my-app                # register app via relay catalog
 
-export SPK_RELAY_URL=http://localhost:8787
+export SPK_RELAY_URL=${HOSTED_RELAY_URL}
 export SPK_RELAY_API_KEY=spk_...`}</CodeBlock>
     </DocPage>
   );
@@ -941,10 +945,13 @@ export function EnvSection() {
   return (
     <DocPage title="Environment variables">
       <h3>Frontend (Vite / your app)</h3>
-      <CodeBlock>{`VITE_RELAY_URL=http://localhost:8787
+      <CodeBlock>{`VITE_RELAY_URL=${HOSTED_RELAY_URL}
 VITE_RELAY_API_KEY=spk_...
 VITE_DEPLOYER_ADDRESS=${TESTNET_DEPLOYER}
 VITE_RELAY_ADMIN_API_KEY=admin-...   # admin portal only`}</CodeBlock>
+      <p>
+        Local relay override: <code>VITE_RELAY_URL={LOCAL_RELAY_URL}</code>
+      </p>
       <h3>Relay server</h3>
       <p>
         See <code>packages/relay/.env.example</code> — sponsor keys, factory addresses, MAX_FEE_MICRO_STX, gas tank path.

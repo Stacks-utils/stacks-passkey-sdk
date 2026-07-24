@@ -13,7 +13,7 @@ describe('wallet-auth plain signatures', () => {
   it('accepts SIWS-style plain message signatures (Leather stx_signMessage)', () => {
     clearAuthChallenges();
     const privateKey = 'f5a31c1268a1e37d4edaa05c7d11183c5fbfdcdc48aae36ea4d8cd5cb709932801';
-    const publicKey = privateKeyToPublic(privateKey);
+    const publicKey = bytesToHex(privateKeyToPublic(privateKey));
     const address = privateKeyToAddress(privateKey, 'testnet');
     const { nonce, expiresAt } = issueAuthChallengeForNetwork(address, 'testnet');
     const plainMessage = buildPlainAuthMessage(address, nonce, expiresAt);

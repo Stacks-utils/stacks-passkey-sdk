@@ -44,3 +44,8 @@ packages/relay/data/
 # Clarinet local artifacts
 **/history.txt
 **/costs-reports.json
+
+# Local-only ops scripts (Render deploy, key derivation — not part of public repo workflow)
+scripts/render-deploy-relay.sh
+scripts/render-start-relay.sh
+scripts/derive-sponsor-from-mnemonic.mjs

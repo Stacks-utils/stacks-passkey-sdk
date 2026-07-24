@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { PasskeyProvider } from '@stacks-passkey/react';
 import { STACKS_TESTNET } from '@stacks/network';
 import type { FeeMode } from '@stacks-passkey/core';
-import { testnetConfig } from '../config.js';
+import { testnetConfig, HOSTED_RELAY_URL } from '../config.js';
 import { DemoApp } from '../demo/DemoApp.js';
 import { DEMO_COPY } from '../content/portal-content.js';
 import { ScrollReveal } from '../components/ScrollReveal.js';
@@ -106,6 +106,13 @@ export function DemoPage() {
 
       <div className="playground-shell">
         <aside className={`playground-sidebar playground-sidebar-drawer${sidebarOpen ? ' is-drawer-open' : ''}`}>
+          <div className="playground-relay-banner">
+            <span className="playground-relay-label">Relay</span>
+            <code className="playground-relay-url">{relayUrl}</code>
+            {relayUrl === HOSTED_RELAY_URL && (
+              <span className="playground-relay-note">Hosted testnet relay</span>
+            )}
+          </div>
           <ConfigPanel feeMode={feeMode} onFeeMode={setFeeMode} />
           <div className="playground-hints forge-panel">
             <h3>What to try</h3>

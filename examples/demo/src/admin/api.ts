@@ -1,4 +1,6 @@
-export const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'http://localhost:8787';
+import { testnetConfig } from '../config.js';
+
+export const RELAY_URL = testnetConfig.relayUrl;
 
 const SESSION_KEY = 'relay-admin-session';
 const KEY_CACHE_KEY = 'relay-admin-api-key-cache';
