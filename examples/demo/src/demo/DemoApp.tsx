@@ -120,6 +120,7 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
   const [demoScoreError, setDemoScoreError] = useState<string | null>(null);
   const [demoScoreLoading, setDemoScoreLoading] = useState(false);
   const [scoreInput, setScoreInput] = useState('42');
+  const [actionLoading, setActionLoading] = useState<'invoke' | 'transfer' | null>(null);
   const pollingTxids = useRef(new Set<string>());
 
   const originAddress = session?.originAddress ?? '';
@@ -240,6 +241,7 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
     const score = BigInt(trimmed);
     if (score <= 0n) return;
 
+    setActionLoading('invoke');
     try {
       const txid = await invoke(testnetConfig.passkeyDemoAppId, 'set-score', {
         arg0: score,
@@ -252,10 +254,13 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
       );
     } catch {
       // surfaced via usePasskeyAccount().error
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleTransfer = async () => {
+    setActionLoading('transfer');
     try {
       const txid = await transfer(testnetConfig.deployer, 100n);
       addInteraction(
@@ -266,6 +271,8 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
       await fetchContractBalance();
     } catch {
       // surfaced via usePasskeyAccount().error
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -309,6 +316,7 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
     smartAccountId && contractBalance !== null && Number.parseFloat(contractBalance) === 0;
   const latestTx = interactions[0];
   const scoreValid = /^\d+$/.test(scoreInput.trim()) && BigInt(scoreInput.trim()) > 0n;
+  const actionBusy = actionLoading !== null;
 
   return (
     <div className="demo-dashboard">
@@ -383,14 +391,14 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
                     step={1}
                     value={scoreInput}
                     onChange={(e) => setScoreInput(e.target.value)}
-                    disabled={loading}
+                    disabled={actionBusy}
                   />
                   <button
                     className="sdk-action-btn sdk-action-primary"
-                    disabled={loading || !scoreValid}
+                    disabled={actionBusy || !scoreValid}
                     onClick={handleInvokeScore}
                   >
-                    {loading && <Spinner />}
+                    {actionLoading === 'invoke' && <Spinner />}
                     Invoke set-score
                   </button>
                 </div>
@@ -398,8 +406,12 @@ export function DemoApp({ feeMode }: { feeMode: FeeMode }) {
                   <p className="sdk-invoke-hint">Enter a whole number greater than 0.</p>
                 )}
               </div>
-              <button className="sdk-action-btn" disabled={loading} onClick={handleTransfer}>
-                {loading && <Spinner />}
+              <button
+                className="sdk-action-btn"
+                disabled={actionBusy}
+                onClick={handleTransfer}
+              >
+                {actionLoading === 'transfer' && <Spinner />}
                 {demo.secondaryAction}
               </button>
               <button
