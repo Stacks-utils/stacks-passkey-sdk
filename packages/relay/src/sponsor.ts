@@ -85,9 +85,15 @@ export class SponsorService {
     const hex = txHex.startsWith('0x') ? txHex.slice(2) : txHex;
     const deployFeeMultiplier = 4n;
     const transactionPreview = deserializeTransaction(Buffer.from(hex, 'hex'));
-    const actualFee = isSmartContractPayload(transactionPreview.payload)
+    const configuredFee = isSmartContractPayload(transactionPreview.payload)
       ? this.config.policy.maxFeeMicroStx * deployFeeMultiplier
       : this.config.policy.maxFeeMicroStx;
+    const actualFee =
+      context.billingMode === 'account-pay'
+        ? configuredFee
+        : context.estimatedFeeMicroStx && context.estimatedFeeMicroStx > configuredFee
+          ? context.estimatedFeeMicroStx
+          : configuredFee;
 
     let reserved = false;
     if (this.gasTank && context.walletId && context.billingMode === 'gasless') {
