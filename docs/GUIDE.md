@@ -39,8 +39,8 @@ You install npm packages, point at shared testnet infrastructure, build your UI,
 
 You **do** need two values from whoever operates the infrastructure:
 
-- **Relay URL** — e.g. `https://relay.yourplatform.com` or `http://localhost:8787` for local dev against a teammate's relay
-- **Relay API key** — `spk_...` (pays gas for your users' transactions)
+- **Relay URL** — hosted testnet: `https://stacks-passkey-relay.onrender.com`, your own deployment, or `http://localhost:8787` for local dev
+- **Relay API key** — `spk_...` (pays gas for your users' transactions; create at the dev portal)
 
 ---
 
@@ -56,29 +56,32 @@ From [`config/testnet.json`](../config/testnet.json):
 | Adapter | `ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-adapter` |
 | Demo app (example) | `ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-demo-app` |
 
-Each user gets a **dedicated smart account** (e.g. `STxxx.passkey-acc-a1b2c3d4`) deployed by the relay on first sign-up. Fund that address — not a shared pool contract.
+Each user self-deploys **`STorigin.smart-account`** at sign-up (relay-sponsored). Fund that contract address — not the origin address.
 
-### npm packages
+### npm packages (v0.1.0)
 
-| Package | Purpose |
-|---------|---------|
-| `@stacks-passkey/core` | PasskeyClient, signing, `invoke()` |
-| `@stacks-passkey/react` | `PasskeyProvider`, `usePasskeyAccount()` hooks |
-| `@stacks/network` | `STACKS_TESTNET` |
+Published on [npm](https://www.npmjs.com/search?q=%40stacks-passkey):
+
+| Package | npm | Purpose |
+|---------|-----|---------|
+| `@stacks-passkey/core` | [package](https://www.npmjs.com/package/@stacks-passkey/core) | PasskeyClient, signing, `invoke()`, `spk` CLI |
+| `@stacks-passkey/react` | [package](https://www.npmjs.com/package/@stacks-passkey/react) | `PasskeyProvider`, `usePasskeyAccount()` hooks |
+| `@stacks/network` | [package](https://www.npmjs.com/package/@stacks/network) | `STACKS_TESTNET` |
 
 ---
 
 ## 3. How it works (30 seconds)
 
 ```
-User (Face ID) → Your frontend → SDK → Relay (gas + account deploy) → per-user passkey-acc-* on-chain
+User (Face ID) → Your frontend → SDK → Relay (gas + template) → STorigin.smart-account on-chain
 ```
 
 1. User taps **Sign up** → WebAuthn creates a passkey in the device secure enclave.
-2. SDK → relay `POST /v1/accounts/ensure` → relay deploys `passkey-acc-{hash}`, registers key + factory mapping.
-3. Session stores **user's** `contractId` (e.g. `STxxx.passkey-acc-a1b2c3d4`).
-4. User taps **Do something** → SDK asks for biometric approval, builds a signed transaction, relay broadcasts it.
-5. For your app's custom logic, SDK calls `invoke('STxxx.your-app', 'your-function', args)` which routes through the adapter.
+2. SDK fetches account template → relay sponsors deploy of **`STorigin.smart-account`** → passkey-signed `register`.
+3. SDK → relay `POST /v1/accounts/ensure` → factory maps pubkey → smart account.
+4. Session stores **`session.contractId`** (e.g. `STorigin.smart-account`).
+5. User taps **Do something** → SDK asks for biometric approval, builds a signed transaction, relay broadcasts it.
+6. For your app's custom logic, SDK calls `invoke('STxxx.your-app', 'your-function', args)` which routes through the adapter.
 
 You never touch private keys. The relay cannot forge signatures — it only sponsors fees.
 
@@ -102,6 +105,8 @@ In your frontend project:
 npm install @stacks-passkey/core @stacks-passkey/react @stacks/network
 ```
 
+Packages: [`@stacks-passkey/core`](https://www.npmjs.com/package/@stacks-passkey/core) · [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react)
+
 No separate CLI install — `spk` ships inside `@stacks-passkey/core` if you need it later.
 
 ---
@@ -111,8 +116,8 @@ No separate CLI install — `spk` ships inside `@stacks-passkey/core` if you nee
 Create `.env` (Vite) or `.env.local` (Next.js):
 
 ```env
-# From your infra provider (NOT localhost in production)
-VITE_RELAY_URL=https://relay.yourplatform.com
+# Hosted testnet relay (default for new integrations)
+VITE_RELAY_URL=https://stacks-passkey-relay.onrender.com
 VITE_RELAY_API_KEY=spk_your_project_key_here
 
 # Deployer address (copy from config/testnet.json)
@@ -123,7 +128,7 @@ VITE_FACTORY_NAME=passkey-factory
 VITE_APP_CONTRACT_ID=ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-demo-app
 ```
 
-For **local dev** against a teammate's relay:
+For **local dev** with your own relay:
 
 ```env
 VITE_RELAY_URL=http://localhost:8787
