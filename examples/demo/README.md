@@ -1,6 +1,6 @@
 # Stacks Passkey Portal
 
-Unified web portal at **http://localhost:3000** — demo, developer docs, and relay admin in one app.
+Unified web portal at **http://localhost:3000** — demo, developer docs, and dev portal in one app.
 
 ## Routes
 
@@ -10,7 +10,7 @@ Unified web portal at **http://localhost:3000** — demo, developer docs, and re
 | `/demo` | Interactive SDK demo (passkey smart account, transfers, invoke) |
 | `/docs` | Developer documentation (redirects to first topic) |
 | `/docs/:topic` | Individual doc pages (e.g. `/docs/overview`, `/docs/invoke`) |
-| `/admin` | Relay admin — API keys, gas tanks, sponsorship logs |
+| `/portal` | Dev portal — API keys, gas tanks, sponsorship logs |
 
 ## Quick start
 
