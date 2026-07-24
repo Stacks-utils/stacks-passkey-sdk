@@ -1,6 +1,40 @@
 export const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'http://localhost:8787';
 
 const SESSION_KEY = 'relay-admin-session';
+const KEY_CACHE_KEY = 'relay-admin-api-key-cache';
+
+type ApiKeyCache = Record<string, string>;
+
+function readApiKeyCache(): ApiKeyCache {
+  try {
+    const raw = localStorage.getItem(KEY_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as ApiKeyCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function cacheApiKey(keyId: string, apiKey: string): void {
+  const cache = readApiKeyCache();
+  cache[keyId] = apiKey;
+  localStorage.setItem(KEY_CACHE_KEY, JSON.stringify(cache));
+}
+
+export function getCachedApiKey(keyId: string): string | null {
+  return readApiKeyCache()[keyId] ?? null;
+}
+
+export function removeCachedApiKey(keyId: string): void {
+  const cache = readApiKeyCache();
+  delete cache[keyId];
+  localStorage.setItem(KEY_CACHE_KEY, JSON.stringify(cache));
+}
+
+export async function revealApiKey(keyId: string): Promise<string> {
+  const { apiKey } = await walletFetch<{ apiKey: string }>(`/v1/wallet/keys/${keyId}/reveal`);
+  cacheApiKey(keyId, apiKey);
+  return apiKey;
+}
 
 export type WalletInfo = {
   walletId: string;
@@ -19,6 +53,8 @@ export type ApiKeySummary = {
   name: string;
   keyPrefix: string;
   createdAt: string;
+  /** Relay has plaintext on file (local dev only). */
+  retrievable?: boolean;
 };
 
 export type ApiKeyCreated = ApiKeySummary & {
