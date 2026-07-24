@@ -54,6 +54,9 @@ export interface TransferAction {
 
 export type FeeMode = 'gasless' | 'account-pay';
 
+/** Default fixed reimbursement for account-pay (µSTX). Should match relay `MAX_FEE_MICRO_STX`. */
+export const DEFAULT_MAX_FEE_MICRO_STX = 100_000n;
+
 export interface FeeConfig {
   mode: FeeMode;
   /** Required for gasless and account-pay (registration uses gasless). */
@@ -61,6 +64,7 @@ export interface FeeConfig {
   relayApiKey?: string;
   /** Account-pay: relayer address that receives fee reimbursement from contract STX. */
   feeRecipient?: string;
+  /** Account-pay: fixed reimbursement (µSTX). Defaults to relay `sponsorFeeMicroStx` from /v1/project. */
   maxFeeMicroStx?: bigint;
 }
 
@@ -109,6 +113,9 @@ export interface InvokeAction {
   /** Public function routed via passkey-exec on the target contract */
   function: string;
   args?: ContractCallArgs;
+  /** Account-pay: relayer address that receives fee reimbursement from contract STX. */
+  feeRecipient?: string;
+  feeAmount?: bigint;
 }
 
 /** @deprecated Use InvokeAction */
@@ -134,6 +141,7 @@ export const ACTION_ADD_KEY = 2;
 export const ACTION_REMOVE_KEY = 3;
 export const ACTION_TRANSFER_WITH_FEE = 4;
 export const ACTION_INVOKE = 5;
+export const ACTION_INVOKE_WITH_FEE = 6;
 /** @deprecated */ export const ACTION_CONTRACT_CALL = ACTION_INVOKE;
 
 export function resolveDeployerAddress(config: PasskeyConfig): string {
