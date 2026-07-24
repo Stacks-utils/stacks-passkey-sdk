@@ -1,21 +1,26 @@
 import { Link, NavLink, Navigate, Outlet, useParams } from 'react-router-dom';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram.js';
-import { DOC_PAGES, DOC_PAGES_BY_SLUG, DEFAULT_DOC_SLUG } from './docs-nav.js';
+import { DOC_NAV_GROUPS, DOC_PAGES, DOC_PAGES_BY_SLUG, DEFAULT_DOC_SLUG, docPagesInGroup } from './docs-nav.js';
 
 export function DocsLayout() {
   return (
     <div className="docs-layout-v2">
       <aside className="docs-toc">
-        <p className="docs-toc-title">Documentation</p>
+        <p className="docs-toc-title">Developer docs</p>
         <nav>
-          {DOC_PAGES.map((item) => (
-            <NavLink
-              key={item.slug}
-              to={`/docs/${item.slug}`}
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
-            >
-              {item.label}
-            </NavLink>
+          {DOC_NAV_GROUPS.map((group) => (
+            <div key={group} className="docs-toc-group">
+              <p className="docs-toc-group-label">{group}</p>
+              {docPagesInGroup(group).map((item) => (
+                <NavLink
+                  key={item.slug}
+                  to={`/docs/${item.slug}`}
+                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="docs-toc-cta">
