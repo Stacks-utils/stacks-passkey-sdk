@@ -30,7 +30,7 @@ This guide walks you from zero to a working passkey-powered Stacks dApp: contrac
 Stacks Passkey gives your web app **wallet-less onboarding**:
 
 - Users sign up with Face ID / Touch ID (WebAuthn P-256)
-- Their smart account is a **per-user Clarity contract** (`passkey-acc-{hash}`) deployed by the relay on first sign-up
+- Each user **self-deploys** `STorigin.smart-account` (relay-sponsored) from a passkey-derived origin key
 - Transactions are authorized by passkey signature verified on-chain (`secp256r1-verify`)
 - Gas can be **sponsored by your relay** (gasless UX) or reimbursed from the contract STX balance
 
@@ -239,7 +239,25 @@ Create `passkey.manifest.json` in your project (or run `npx spk init`):
 
 ## 7. Phase 3 — Run the relay
 
+Use the **hosted testnet relay** at `https://stacks-passkey-relay.onrender.com` for prototyping, or self-host with [`@stacks-passkey/relay`](https://www.npmjs.com/package/@stacks-passkey/relay) from npm.
+
 The relay sponsors transaction fees and runs the **catalog service** (auto-registers app contracts on `passkey-adapter`).
+
+### Option A — Hosted relay (fastest)
+
+1. Open the dev portal and connect a wallet
+2. Create a project → copy `spk_...` API key
+3. Point your frontend at `https://stacks-passkey-relay.onrender.com`
+
+### Option B — Self-host from npm
+
+```bash
+npm install @stacks-passkey/relay
+# Configure env vars (see packages/relay/.env.example in this repo), then:
+npx stacks-passkey-relay
+```
+
+### Option C — Run from this monorepo (development)
 
 ```bash
 cp packages/relay/.env.example packages/relay/.env
@@ -295,8 +313,8 @@ Before users can `invoke` your contract, it must be registered on `passkey-adapt
 ### Option B — CLI
 
 ```bash
-npm install @stacks-passkey/core   # spk ships with this package
-export SPK_RELAY_URL=http://localhost:8787
+npm install @stacks-passkey/core   # spk CLI included — https://www.npmjs.com/package/@stacks-passkey/core
+export SPK_RELAY_URL=https://stacks-passkey-relay.onrender.com
 export SPK_RELAY_API_KEY=spk_...
 npx spk ensure ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ.passkey-demo-app
 ```
@@ -327,14 +345,18 @@ The relay will:
 npm install @stacks-passkey/core @stacks-passkey/react @stacks/network
 ```
 
+Packages: [`@stacks-passkey/core`](https://www.npmjs.com/package/@stacks-passkey/core) · [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react)
+
 ### Environment (Vite example — see `examples/demo/.env.example`)
 
 ```env
-VITE_RELAY_URL=http://localhost:8787
+VITE_RELAY_URL=https://stacks-passkey-relay.onrender.com
 VITE_RELAY_API_KEY=spk_your_project_key
 VITE_DEPLOYER_ADDRESS=ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ
 VITE_FACTORY_NAME=passkey-factory
 ```
+
+Use `http://localhost:8787` when running `npm run dev:relay` locally.
 
 ### PasskeyClient config
 
