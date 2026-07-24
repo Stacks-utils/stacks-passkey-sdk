@@ -187,9 +187,3 @@ export function truncateAddress(address: string): string {
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
-
-export function addressExplorerUrl(address: string, network?: string): string {
-  const base =
-    network === 'mainnet' ? 'https://explorer.hiro.so/address' : 'https://explorer.hiro.so/address?chain=testnet';
-  return `${base}/${address}`;
-}
