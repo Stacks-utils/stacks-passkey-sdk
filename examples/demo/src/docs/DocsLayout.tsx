@@ -1,9 +1,45 @@
-import { Link, NavLink, Navigate, Outlet, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, NavLink, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram.js';
+import { MobileMenuButton } from '../components/MobileMenuButton.js';
 import { ScrollReveal } from '../components/ScrollReveal.js';
+import { useEscapeKey, useScrollLock } from '../hooks/useScrollLock.js';
 import { DOC_NAV_GROUPS, DOC_PAGES_BY_SLUG, DEFAULT_DOC_SLUG, docPagesInGroup } from './docs-nav.js';
 
+function DocsTocNav({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav>
+      {DOC_NAV_GROUPS.map((group) => (
+        <div key={group} className="docs-toc-group">
+          <p className="docs-toc-group-label">{group}</p>
+          {docPagesInGroup(group).map((item) => (
+            <NavLink
+              key={item.slug}
+              to={`/docs/${item.slug}`}
+              className={({ isActive }) => (isActive ? 'active' : undefined)}
+              onClick={onNavigate}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 export function DocsLayout() {
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useScrollLock(menuOpen);
+  useEscapeKey(closeMenu, menuOpen);
+
   return (
     <div className="docs-layout-v2 portal-page">
       <header className="portal-page-hero docs-portal-hero">
@@ -17,37 +53,35 @@ export function DocsLayout() {
           </Link>
         </ScrollReveal>
       </header>
+
+      <div className="mobile-only-bar docs-mobile-bar">
+        <MobileMenuButton open={menuOpen} onClick={() => setMenuOpen((open) => !open)} label="Open docs menu" />
+        <span className="mobile-only-bar-title">Developer docs</span>
+      </div>
+
+      <button
+        type="button"
+        className={`mobile-drawer-backdrop docs-drawer-backdrop${menuOpen ? ' is-open' : ''}`}
+        aria-label="Close docs menu"
+        onClick={closeMenu}
+      />
+
       <div className="docs-layout-body">
-      <aside className="docs-toc">
-        <p className="docs-toc-title">Developer docs</p>
-        <nav>
-          {DOC_NAV_GROUPS.map((group) => (
-            <div key={group} className="docs-toc-group">
-              <p className="docs-toc-group-label">{group}</p>
-              {docPagesInGroup(group).map((item) => (
-                <NavLink
-                  key={item.slug}
-                  to={`/docs/${item.slug}`}
-                  className={({ isActive }) => (isActive ? 'active' : undefined)}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="docs-toc-cta">
-          <Link to="/demo" className="btn btn-primary btn-block">
-            Try live demo
-          </Link>
-        </div>
-      </aside>
+        <aside className={`docs-toc docs-toc-drawer${menuOpen ? ' is-drawer-open' : ''}`}>
+          <p className="docs-toc-title">Developer docs</p>
+          <DocsTocNav onNavigate={closeMenu} />
+          <div className="docs-toc-cta">
+            <Link to="/demo" className="btn btn-primary btn-block" onClick={closeMenu}>
+              Try live demo
+            </Link>
+          </div>
+        </aside>
 
-      <Outlet />
+        <Outlet />
 
-      <aside className="docs-arch-aside">
-        <ArchitectureDiagram />
-      </aside>
+        <aside className="docs-arch-aside">
+          <ArchitectureDiagram />
+        </aside>
       </div>
     </div>
   );

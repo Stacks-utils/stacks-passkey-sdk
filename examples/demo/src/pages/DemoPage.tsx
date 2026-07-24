@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { PasskeyProvider } from '@stacks-passkey/react';
 import { STACKS_TESTNET } from '@stacks/network';
 import type { FeeMode } from '@stacks-passkey/core';
@@ -6,6 +6,8 @@ import { testnetConfig } from '../config.js';
 import { DemoApp } from '../demo/DemoApp.js';
 import { DEMO_COPY } from '../content/portal-content.js';
 import { ScrollReveal } from '../components/ScrollReveal.js';
+import { MobileMenuButton } from '../components/MobileMenuButton.js';
+import { useEscapeKey, useScrollLock } from '../hooks/useScrollLock.js';
 
 function ConfigPanel({
   feeMode,
@@ -42,8 +44,13 @@ function ConfigPanel({
 
 export function DemoPage() {
   const [feeMode, setFeeMode] = useState<FeeMode>('gasless');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const relayUrl = testnetConfig.relayUrl;
   const relayApiKey = import.meta.env.VITE_RELAY_API_KEY;
+
+  useScrollLock(sidebarOpen);
+  useEscapeKey(closeSidebar, sidebarOpen);
 
   const config = useMemo(
     () => ({
@@ -81,8 +88,24 @@ export function DemoPage() {
         </ScrollReveal>
       </header>
 
+      <div className="mobile-only-bar playground-mobile-bar">
+        <MobileMenuButton
+          open={sidebarOpen}
+          onClick={() => setSidebarOpen((open) => !open)}
+          label="Open playground settings"
+        />
+        <span className="mobile-only-bar-title">Playground settings</span>
+      </div>
+
+      <button
+        type="button"
+        className={`mobile-drawer-backdrop playground-drawer-backdrop${sidebarOpen ? ' is-open' : ''}`}
+        aria-label="Close playground settings"
+        onClick={closeSidebar}
+      />
+
       <div className="playground-shell">
-        <aside className="playground-sidebar">
+        <aside className={`playground-sidebar playground-sidebar-drawer${sidebarOpen ? ' is-drawer-open' : ''}`}>
           <ConfigPanel feeMode={feeMode} onFeeMode={setFeeMode} />
           <div className="playground-hints forge-panel">
             <h3>What to try</h3>

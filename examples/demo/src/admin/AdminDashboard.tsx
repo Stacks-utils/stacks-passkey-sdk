@@ -14,6 +14,8 @@ import {
   type WalletInfo,
 } from './api.js';
 import { addressExplorerUrl, explorerNetwork, txExplorerUrl } from '../explorer.js';
+import { MobileMenuButton } from '../components/MobileMenuButton.js';
+import { useEscapeKey, useScrollLock } from '../hooks/useScrollLock.js';
 import { useWallet } from './WalletProvider.js';
 import { Logo } from '../components/Logo.js';
 
@@ -245,6 +247,7 @@ function Dashboard() {
   const [keyName, setKeyName] = useState('Demo app');
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -320,21 +323,46 @@ function Dashboard() {
 
   const chain = explorerNetwork(wallet.network);
 
+  const tabTitle =
+    tab === 'overview' ? 'Gas tank' : tab === 'keys' ? 'API Keys' : 'Activity';
+
+  const selectTab = (next: Tab) => {
+    setTab(next);
+    setSidebarOpen(false);
+  };
+
+  useScrollLock(sidebarOpen);
+  useEscapeKey(() => setSidebarOpen(false), sidebarOpen);
+
   return (
     <div className="admin-layout">
-      <aside className="sidebar">
+      <button
+        type="button"
+        className={`mobile-drawer-backdrop portal-drawer-backdrop${sidebarOpen ? ' is-open' : ''}`}
+        aria-label="Close portal menu"
+        onClick={() => setSidebarOpen(false)}
+      />
+      <div className="mobile-only-bar portal-mobile-bar">
+        <MobileMenuButton
+          open={sidebarOpen}
+          onClick={() => setSidebarOpen((open) => !open)}
+          label="Open portal menu"
+        />
+        <span className="mobile-only-bar-title">{tabTitle}</span>
+      </div>
+      <aside className={`sidebar portal-sidebar-drawer${sidebarOpen ? ' is-drawer-open' : ''}`}>
         <div className="sidebar-brand">
           <Logo size={28} />
           <span>Dev portal</span>
         </div>
         <nav className="sidebar-nav">
-          <button type="button" className={`nav-item${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>
+          <button type="button" className={`nav-item${tab === 'overview' ? ' active' : ''}`} onClick={() => selectTab('overview')}>
             Overview
           </button>
-          <button type="button" className={`nav-item${tab === 'keys' ? ' active' : ''}`} onClick={() => setTab('keys')}>
+          <button type="button" className={`nav-item${tab === 'keys' ? ' active' : ''}`} onClick={() => selectTab('keys')}>
             API Keys
           </button>
-          <button type="button" className={`nav-item${tab === 'activity' ? ' active' : ''}`} onClick={() => setTab('activity')}>
+          <button type="button" className={`nav-item${tab === 'activity' ? ' active' : ''}`} onClick={() => selectTab('activity')}>
             Activity
           </button>
         </nav>
