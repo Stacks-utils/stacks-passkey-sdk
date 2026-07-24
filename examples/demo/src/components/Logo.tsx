@@ -7,6 +7,7 @@ export function Logo({ size = 36 }: { size?: number }) {
       height={size}
       className="brand-logo"
       style={{ width: size, height: size }}
+      decoding="async"
     />
   );
 }
