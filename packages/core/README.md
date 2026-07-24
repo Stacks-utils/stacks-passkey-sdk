@@ -2,6 +2,8 @@
 
 TypeScript SDK for wallet-less passkey smart accounts on Stacks.
 
+[![npm version](https://img.shields.io/npm/v/@stacks-passkey/core)](https://www.npmjs.com/package/@stacks-passkey/core)
+
 ## Install
 
 ```bash
@@ -9,6 +11,8 @@ npm install @stacks-passkey/core @stacks/network
 ```
 
 Includes the **`spk` CLI** (`npx spk help`).
+
+Related packages: [`@stacks-passkey/react`](https://www.npmjs.com/package/@stacks-passkey/react) · [`@stacks-passkey/relay`](https://www.npmjs.com/package/@stacks-passkey/relay)
 
 ## Documentation
 
@@ -26,12 +30,17 @@ import { STACKS_TESTNET } from '@stacks/network';
 
 const client = new PasskeyClient({
   network: STACKS_TESTNET,
-  relayUrl: 'http://localhost:8787',
+  relayUrl: 'https://stacks-passkey-relay.onrender.com',
   relayApiKey: 'spk_...',
   deployerAddress: 'ST3XHHZ1CXVCNYXK3FQ1FDGJ9NK6YBJBJK3FVY5KQ',
   rpId: 'localhost',
   rpName: 'My App',
   origin: 'http://localhost:3000',
+  fee: {
+    mode: 'gasless',
+    relayUrl: 'https://stacks-passkey-relay.onrender.com',
+    relayApiKey: 'spk_...',
+  },
 });
 
 await client.register('user-id', 'Alice');
@@ -44,8 +53,8 @@ Shared testnet deployment IDs are in [`config/testnet.json`](../../config/testne
 ## CLI
 
 ```bash
-spk init [dir]              # scaffold passkey.manifest.json
-spk ensure STxxx.my-app     # POST /v1/catalog/ensure (needs SPK_RELAY_API_KEY)
+npx spk init [dir]              # scaffold passkey.manifest.json
+npx spk ensure STxxx.my-app     # POST /v1/catalog/ensure (needs SPK_RELAY_API_KEY)
 ```
 
 ## License
