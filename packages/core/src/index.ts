@@ -2,13 +2,13 @@ export { PasskeyClient } from './passkey-client.js';
 export type { PasskeyClientOptions } from './passkey-client.js';
 export { RelayClient } from './relay-client.js';
 export type { RelayClientOptions } from './relay-client.js';
-export { broadcastContractCall, estimateRelayFeeMicroStx, type FeeOptions } from './fee.js';
+export { broadcastContractCall, estimateRelayFeeMicroStx, resolveAccountPayFeeMicroStx, type FeeOptions } from './fee.js';
 export { assertBroadcastTxid, normalizeTxId } from './broadcast.js';
 export { createTestPasskey, signWebAuthnAssertion, buildAuthenticatorData, buildClientDataJSON, computeWebAuthnSignedHash, rsToDer } from './webauthn-crypto.js';
 export { derToRS, normalizeLowS, compressP256, base64UrlEncode, base64UrlDecode, bufferToHex, hexToBuffer, concatBytes } from './crypto.js';
 export { registerPasskey, authenticatePasskey, signWithPasskey, verifyChallengeInClientData } from './webauthn.js';
-export { fetchActionHash, buildExecuteFunctionArgs, getExecuteFunctionName, withAccountPayFee, isPublicKeyAuthorized, isContractRegistered, createInvokeAction, createContractCallAction, buildContractCallArgs } from './actions.js';
-export { normalizeContractCallArgs, CONTRACT_CALL_UNUSED_PRINCIPAL } from './types.js';
+export { fetchActionHash, buildExecuteFunctionArgs, getExecuteFunctionName, withAccountPayFee, withAccountPayInvokeFee, isPublicKeyAuthorized, isContractRegistered, createInvokeAction, createContractCallAction, buildContractCallArgs } from './actions.js';
+export { normalizeContractCallArgs, CONTRACT_CALL_UNUSED_PRINCIPAL, DEFAULT_MAX_FEE_MICRO_STX } from './types.js';
 export { saveSession, loadSession, clearSession, hasSession } from './session.js';
 export {
   loadOriginPrivateKey,
@@ -21,7 +21,13 @@ export {
   loadStoredCredentials,
   saveStoredCredential,
   findStoredCredentials,
+  findStoredCredentialsByRpId,
   findStoredCredentialById,
+  findStoredCredentialByIdRelaxed,
+  findStoredCredentialByIdGlobal,
+  normalizeRpId,
+  rpIdsEquivalent,
+  describeCredentialLookupFailure,
   type StoredCredential,
 } from './credentials.js';
 export type {
