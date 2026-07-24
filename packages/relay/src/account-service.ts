@@ -19,6 +19,7 @@ import {
 } from './registrar-queue.js';
 import { runWithSponsorLock } from './sponsor-lock.js';
 import { fetchStxBalanceMicro } from './on-chain-balance.js';
+import { platformRegistrarAddress, platformRegistrarPrivateKey } from './registrar.js';
 
 export interface EnsureAccountResult {
   contractAddress: string;
@@ -80,11 +81,11 @@ export class AccountService {
     }
     const adapterContract = `'${adapterAddress}.${adapterName}`;
     return this.readAccountContractSource()
-      .replace(
+      .replaceAll(
         '(use-trait exec-trait .passkey-adapter.passkey-exec-trait)',
         `(use-trait exec-trait ${adapterContract}.passkey-exec-trait)`
       )
-      .replace(
+      .replaceAll(
         '(contract-call? .passkey-adapter forward-invoke',
         `(contract-call? ${adapterContract} forward-invoke`
       );
@@ -264,8 +265,8 @@ export class AccountService {
     const network = getNetwork(this.config.network);
     const fee = this.config.policy.maxFeeMicroStx;
     const creds = await this.assertGas(projectId, fee);
-    const senderKey = creds?.sponsorPrivateKey ?? this.config.registrarPrivateKey ?? this.config.sponsorPrivateKey;
-    const lockAddress = creds?.sponsorAddress;
+    const senderKey = platformRegistrarPrivateKey(this.config);
+    const lockAddress = platformRegistrarAddress(this.config);
 
     const broadcastTask = () =>
       this.broadcast(projectId, fee, async () =>
@@ -280,7 +281,7 @@ export class AccountService {
         })
       );
 
-    if (lockAddress) {
+    if (creds) {
       return runWithSponsorLock(lockAddress, broadcastTask);
     }
     return broadcastTask();
