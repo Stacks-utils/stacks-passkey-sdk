@@ -45,7 +45,7 @@ export function GettingStartedSection() {
             <strong>Relay URL</strong> — e.g. <code>http://localhost:8787</code> (local) or your hosted relay
           </li>
           <li>
-            <strong>API key</strong> — <code>spk_...</code> from the <Link to="/admin">relay admin</Link>
+            <strong>API key</strong> — <code>spk_...</code> from the <Link to="/portal">dev portal</Link>
           </li>
           <li>
             <strong>Deployer address</strong> — platform factory + adapter (shared testnet:{' '}
@@ -261,7 +261,7 @@ export function InstallSection() {
             detail: (
               <p>
                 Local dev: <code>npm run dev:relay</code> then create a key in{' '}
-                <Link to="/admin">relay admin</Link>.
+                <Link to="/portal">dev portal</Link>.
               </p>
             ),
           },
@@ -587,7 +587,7 @@ export function FeeModesSection() {
   relayUrl: import.meta.env.VITE_RELAY_URL,
   relayApiKey: import.meta.env.VITE_RELAY_API_KEY,
 }`}</CodeBlock>
-      <p>Each tx debits up to relay <code>MAX_FEE_MICRO_STX</code> from your project gas tank. Fund the tank in admin.</p>
+      <p>Each tx debits up to relay <code>MAX_FEE_MICRO_STX</code> from your project gas tank. Fund the tank in the dev portal.</p>
 
       <h3>Account-pay</h3>
       <CodeBlock>{`fee: {
@@ -749,7 +749,7 @@ ALLOWED_CONTRACTS=${TESTNET_DEPLOYER}
 MAX_FEE_MICRO_STX=100000
 SPONSOR_PRIVATE_KEY_FILE=./sponsor.key`}</CodeBlock>
       <p>
-        Create project API keys in <Link to="/admin">relay admin</Link>. Each project gets an isolated gas tank address.
+        Create project API keys in the <Link to="/portal">dev portal</Link>. Each project gets an isolated gas tank address.
       </p>
     </DocPage>
   );
