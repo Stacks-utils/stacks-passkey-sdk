@@ -7,10 +7,10 @@ export const PORTAL_TOOLS = [
     accent: 'var(--playground)',
   },
   {
-    to: '/docs',
+    to: '/docs/getting-started',
     title: 'Developer docs',
-    desc: 'PasskeyClient config, relay API, and Clarity adapter integration.',
-    badge: 'Reference',
+    desc: 'Step-by-step SDK integration — install, sign-up, invoke, fee modes, and API reference.',
+    badge: 'Guide',
     accent: 'var(--forge-accent)',
   },
   {
@@ -24,7 +24,7 @@ export const PORTAL_TOOLS = [
     to: '/docs/overview',
     title: 'Architecture',
     desc: 'Self-deploy smart accounts, passkey-adapter routing, and relay sponsorship.',
-    badge: 'Guide',
+    badge: 'Deep dive',
     accent: 'var(--primary)',
   },
 ] as const;
