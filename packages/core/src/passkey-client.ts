@@ -6,6 +6,7 @@ import {
   getExecuteFunctionName,
   isPublicKeyAuthorized,
   withAccountPayFee,
+  withAccountPayInvokeFee,
 } from './actions.js';
 import { bufferToHex, hexToBuffer, base64UrlDecode } from './crypto.js';
 import { normalizeTxId } from './broadcast.js';
@@ -16,6 +17,7 @@ import {
 } from './origin-key.js';
 import {
   broadcastContractCall,
+  resolveAccountPayFeeMicroStx,
   type FeeOptions,
 } from './fee.js';
 import { broadcastContractDeploy, isContractDeployed } from './deploy.js';
@@ -27,8 +29,13 @@ import {
 } from './derive-origin.js';
 import { saveSession, loadSession, clearSession } from './session.js';
 import {
+  describeCredentialLookupFailure,
   findStoredCredentialById,
+  findStoredCredentialByIdGlobal,
+  findStoredCredentialByIdRelaxed,
   findStoredCredentials,
+  findStoredCredentialsByRpId,
+  normalizeRpId,
   saveStoredCredential,
 } from './credentials.js';
 import { registerPasskey, authenticatePasskey, signWithPasskey } from './webauthn.js';
@@ -57,9 +64,13 @@ export class PasskeyClient {
   private fee: FeeConfig;
   private readonly deployerAddress: string;
   private feeRecipient?: string;
+  private relaySponsorFeeMicroStx?: bigint;
 
   constructor(options: PasskeyClientOptions) {
-    this.config = options;
+    this.config = {
+      ...options,
+      rpId: normalizeRpId(options.rpId),
+    };
     this.deployerAddress = resolveDeployerAddress(options);
     if (!this.deployerAddress) {
       throw new Error('PasskeyConfig requires deployerAddress');
@@ -77,6 +88,14 @@ export class PasskeyClient {
 
   setFeeConfig(fee: FeeConfig): void {
     this.fee = fee;
+    if (fee.mode !== 'account-pay') {
+      this.feeRecipient = undefined;
+      this.relaySponsorFeeMicroStx = undefined;
+    } else if (fee.feeRecipient) {
+      this.feeRecipient = fee.feeRecipient;
+    } else {
+      this.feeRecipient = undefined;
+    }
   }
 
   getFeeMode(): FeeConfig['mode'] {
@@ -181,15 +200,35 @@ export class PasskeyClient {
   }
 
   async init(): Promise<void> {
-    if (this.fee.mode === 'account-pay' && !this.fee.feeRecipient) {
-      const health = await this.relay.healthCheck();
-      if (health.sponsorAddress) {
-        this.feeRecipient = health.sponsorAddress;
-      }
-    }
     if (this.fee.feeRecipient) {
       this.feeRecipient = this.fee.feeRecipient;
     }
+
+    const project = await this.relay.getProjectBalance();
+    if (!this.feeRecipient && project?.gasTankAddress) {
+      this.feeRecipient = project.gasTankAddress;
+    }
+    if (project?.sponsorFeeMicroStx) {
+      this.relaySponsorFeeMicroStx = BigInt(project.sponsorFeeMicroStx);
+    }
+
+    if (this.fee.mode === 'account-pay' && !this.feeRecipient) {
+      const health = await this.relay.healthCheck();
+      const fromHealth = health.sponsorAddress ?? health.registrarAddress;
+      if (fromHealth) {
+        this.feeRecipient = fromHealth;
+      }
+      if (!this.relaySponsorFeeMicroStx && health.sponsorFeeMicroStx) {
+        this.relaySponsorFeeMicroStx = BigInt(health.sponsorFeeMicroStx);
+      }
+    }
+  }
+
+  private getAccountPayFeeAmount(): bigint {
+    return resolveAccountPayFeeMicroStx({
+      maxFeeMicroStx: this.fee.maxFeeMicroStx,
+      relaySponsorFeeMicroStx: this.relaySponsorFeeMicroStx,
+    });
   }
 
   async register(userId: string, userName: string): Promise<PasskeyCredential> {
@@ -335,9 +374,14 @@ export class PasskeyClient {
   async signIn(): Promise<PasskeySession> {
     await this.init();
 
-    const stored = findStoredCredentials(this.credentialFilter());
+    const filter = this.credentialFilter();
+    let stored = findStoredCredentials(filter);
     if (stored.length === 0) {
-      throw new Error('No passkeys found for this app. Sign up first on this device.');
+      stored = findStoredCredentialsByRpId(filter.rpId);
+    }
+    if (stored.length === 0) {
+      const hint = describeCredentialLookupFailure(filter);
+      throw new Error(`No passkeys found for this app. Sign up first on this device.${hint}`);
     }
 
     const allowCredentials: PublicKeyCredentialDescriptor[] = stored.map((item) => ({
@@ -345,8 +389,14 @@ export class PasskeyClient {
       type: 'public-key',
     }));
 
-    const { credentialId } = await authenticatePasskey(this.config, allowCredentials);
-    const match = findStoredCredentialById(credentialId, this.credentialFilter());
+    const authRpId = stored[0]?.rpId ?? this.config.rpId;
+    const authConfig = authRpId === this.config.rpId ? this.config : { ...this.config, rpId: authRpId };
+
+    const { credentialId } = await authenticatePasskey(authConfig, allowCredentials);
+    const match =
+      findStoredCredentialById(credentialId, filter) ??
+      findStoredCredentialByIdRelaxed(credentialId, filter.rpId) ??
+      findStoredCredentialByIdGlobal(credentialId);
     if (!match) {
       throw new Error('Passkey not recognized for this app');
     }
@@ -501,35 +551,52 @@ export class PasskeyClient {
         assertion.signature,
         assertion.authenticatorData,
         assertion.clientDataJSON
-      )
+      ),
+      this.getUserContract(),
+      undefined,
+      this.readAccountPayFeeAmount(action)
     );
   }
 
   private async resolveActionForFeeMode(action: PasskeyAction): Promise<PasskeyAction> {
-    if (this.fee.mode !== 'account-pay' || action.type !== 'transfer') {
+    if (this.fee.mode !== 'account-pay') {
       return action;
     }
+
     const feeRecipient = this.feeRecipient ?? this.fee.feeRecipient;
     if (!feeRecipient) {
-      throw new Error('account-pay mode requires feeRecipient (from relay /health or fee config)');
+      throw new Error(
+        'account-pay mode requires feeRecipient (set fee.feeRecipient, or use relayApiKey so /v1/project can resolve gasTankAddress)'
+      );
     }
 
-    const feeAmount = this.fee.maxFeeMicroStx ?? 100_000n;
-    return withAccountPayFee(action, feeRecipient, feeAmount);
+    const feeAmount = this.getAccountPayFeeAmount();
+
+    if (action.type === 'transfer') {
+      return withAccountPayFee(action, feeRecipient, feeAmount);
+    }
+    if (action.type === 'invoke') {
+      return withAccountPayInvokeFee(action, feeRecipient, feeAmount);
+    }
+    return action;
   }
 
-  private buildFeeOptions(): FeeOptions {
+  private buildFeeOptions(accountPayFeeAmount?: bigint): FeeOptions {
     if (this.fee.mode === 'account-pay') {
       const feeRecipient = this.feeRecipient ?? this.fee.feeRecipient;
       if (!feeRecipient) {
         throw new Error('account-pay mode requires feeRecipient');
       }
+      if (accountPayFeeAmount === undefined) {
+        throw new Error('account-pay mode requires a resolved fee amount');
+      }
       return {
         mode: 'account-pay',
-        maxFeeMicroStx: this.fee.maxFeeMicroStx,
+        maxFeeMicroStx: this.getAccountPayFeeAmount(),
         accountPay: {
           relay: this.relay,
           feeRecipient,
+          feeAmountMicroStx: accountPayFeeAmount,
         },
       };
     }
@@ -540,18 +607,26 @@ export class PasskeyClient {
     };
   }
 
+  private readAccountPayFeeAmount(action: PasskeyAction): bigint | undefined {
+    if (action.type === 'transfer' || action.type === 'invoke') {
+      return action.feeAmount;
+    }
+    return undefined;
+  }
+
   private async broadcastCall(
     functionName: string,
     functionArgs: ClarityValue[],
     account = this.getUserContract(),
-    publicKeyHex?: string
+    publicKeyHex?: string,
+    accountPayFeeAmount?: bigint
   ): Promise<string> {
     const registrationUsesGasless =
       functionName === 'register' && this.fee.mode === 'account-pay';
 
     const feeOptions = registrationUsesGasless
       ? { mode: 'gasless' as const, gasless: { relay: this.relay } }
-      : this.buildFeeOptions();
+      : this.buildFeeOptions(accountPayFeeAmount);
 
     return broadcastContractCall(
       {
@@ -575,10 +650,11 @@ export class PasskeyClient {
       const res = await fetch(url);
       if (!res.ok) continue;
 
-      const data = (await res.json()) as { tx_status: string };
+      const data = (await res.json()) as { tx_status: string; tx_result?: { repr?: string }; vm_error?: string | null };
       if (data.tx_status === 'success') return;
       if (data.tx_status === 'abort_by_response' || data.tx_status === 'failed') {
-        throw new Error(`Transaction failed on chain: ${data.tx_status}`);
+        const detail = data.vm_error ?? data.tx_result?.repr ?? data.tx_status;
+        throw new Error(`Transaction failed on chain: ${detail}`);
       }
     }
     throw new Error(`Transaction ${normalizedTxid} was not confirmed on chain`);
