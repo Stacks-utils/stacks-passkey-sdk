@@ -46,14 +46,17 @@ export function createRelayApp(config: RelayConfig, gasTank?: GasTankStore) {
     })
   );
 
-  app.get('/health', (c) =>
-    c.json({
+  app.get('/health', (c) => {
+    const registrarAddress = sponsor.getRegistrarAddress();
+    return c.json({
       ok: true,
-      registrarAddress: sponsor.getRegistrarAddress(),
+      registrarAddress,
+      sponsorAddress: registrarAddress,
+      sponsorFeeMicroStx: config.policy.maxFeeMicroStx.toString(),
       network: config.network,
       auth: 'wallet-signature',
-    })
-  );
+    });
+  });
 
   app.get('/v1/accounts/template', (c) => c.json(accountService.getAccountContractTemplate()));
 
@@ -158,8 +161,24 @@ export function createRelayApp(config: RelayConfig, gasTank?: GasTankStore) {
         name: k.name,
         keyPrefix: k.keyPrefix,
         createdAt: k.createdAt,
+        retrievable: gasTank.canRevealApiKey(wallet.id, k.id),
       })),
     });
+  });
+
+  app.get('/v1/wallet/keys/:id/reveal', (c) => {
+    if (!gasTank) return c.json({ error: 'Gas tank not enabled' }, 503);
+    const address = resolveSessionAddress(c, config);
+    if (!address) return c.json({ error: 'Unauthorized' }, 401);
+    const wallet = gasTank.getWalletByOwner(address);
+    if (!wallet) return c.json({ error: 'Wallet not registered' }, 404);
+    try {
+      const apiKey = gasTank.revealApiKey(wallet.id, c.req.param('id'));
+      return c.json({ apiKey });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Reveal failed';
+      return c.json({ error: message }, 404);
+    }
   });
 
   app.post('/v1/wallet/keys', async (c) => {
@@ -217,18 +236,24 @@ export function createRelayApp(config: RelayConfig, gasTank?: GasTankStore) {
     if (!apiKey) return c.json({ error: 'Unauthorized' }, 401);
     const resolved = gasTank.resolveApiKey(apiKey);
     if (!resolved) return c.json({ error: 'Invalid or revoked API key' }, 401);
-    const onChain = await fetchStxBalanceMicro(resolved.wallet.sponsorAddress, config.network);
-    const available = gasTank.availableBalance(onChain, resolved.wallet);
-    return c.json({
-      walletId: resolved.wallet.id,
-      projectId: resolved.wallet.id,
-      projectName: resolved.apiKey.name,
-      gasTankAddress: resolved.wallet.sponsorAddress,
-      gasBalanceMicroStx: onChain.toString(),
-      availableMicroStx: available.toString(),
-      totalSpentMicroStx: resolved.wallet.totalSpentMicroStx.toString(),
-      txCount: resolved.wallet.txCount,
-    });
+    try {
+      const onChain = await fetchStxBalanceMicro(resolved.wallet.sponsorAddress, config.network);
+      const available = gasTank.availableBalance(onChain, resolved.wallet);
+      return c.json({
+        walletId: resolved.wallet.id,
+        projectId: resolved.wallet.id,
+        projectName: resolved.apiKey.name,
+        gasTankAddress: resolved.wallet.sponsorAddress,
+        gasBalanceMicroStx: onChain.toString(),
+        availableMicroStx: available.toString(),
+        totalSpentMicroStx: resolved.wallet.totalSpentMicroStx.toString(),
+        txCount: resolved.wallet.txCount,
+        sponsorFeeMicroStx: config.policy.maxFeeMicroStx.toString(),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Balance lookup failed';
+      return c.json({ error: message }, 503);
+    }
   });
 
   // --- Legacy admin (X-Admin-Key) — list only ---
