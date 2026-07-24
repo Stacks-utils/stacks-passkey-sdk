@@ -11,6 +11,9 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
@@ -19,12 +22,26 @@
     "react": ">=18"
   },
   "dependencies": {
-    "@stacks-passkey/core": "0.1.0"
+    "@stacks-passkey/core": "^0.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "typescript": "^5.7.2"
   },
-  "license": "MIT"
+  "keywords": [
+    "stacks",
+    "passkey",
+    "webauthn",
+    "react"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stacks-utils/stacks-passkey-sdk.git",
+    "directory": "packages/react"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -43,5 +43,13 @@
     "clarity",
     "secp256r1"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stacks-utils/stacks-passkey-sdk.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

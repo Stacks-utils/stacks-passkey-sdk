@@ -5,6 +5,15 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "bin": {
     "stacks-passkey-relay": "./dist/cli.js"
   },
@@ -12,7 +21,8 @@
     "build": "tsc",
     "dev": "tsx watch src/cli.ts",
     "start": "node dist/cli.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@stacks/network": "^7.0.2",
@@ -26,5 +36,19 @@
     "typescript": "^5.7.2",
     "vitest": "^3.0.5"
   },
-  "license": "MIT"
+  "keywords": [
+    "stacks",
+    "passkey",
+    "relay",
+    "sponsor"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Stacks-utils/stacks-passkey-sdk.git",
+    "directory": "packages/relay"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
